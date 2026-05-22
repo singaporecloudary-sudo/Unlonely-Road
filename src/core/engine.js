@@ -229,6 +229,11 @@ EventBus.prototype.on = function(event, callback) {
 };
 EventBus.prototype.off = function(event, callback) {
   if (!this.listeners[event]) return;
+  // 不传 callback → 移除该 event 的全部监听器
+  if (callback === undefined) {
+    this.listeners[event] = [];
+    return;
+  }
   this.listeners[event] = this.listeners[event].filter(function(cb) { return cb !== callback; });
 };
 EventBus.prototype.emit = function(event, data) {

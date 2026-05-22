@@ -347,6 +347,10 @@ class BattleScene {
     this.eventBus.off('touchStart');
     this.eventBus.off('touchMove');
     this.eventBus.off('touchEnd');
+    // 重置结算状态，避免残留触发场景外的 advanceStage / claim 等逻辑
+    this.victory = false;
+    this.gameOver = false;
+    this._resultBtns = null;
   }
 
   _initStage() {

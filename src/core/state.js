@@ -81,10 +81,6 @@ class GameState {
 
   set(key, value) {
     const old = this._state[key];
-    if (key === 'currentStage' && old !== value) {
-      console.warn('[STATE] currentStage SET!', old, '→', value);
-      console.trace('[STATE] set stack');
-    }
     this._state[key] = value;
     this._notify(key, old, value);
   }
@@ -329,8 +325,6 @@ class GameState {
 
   // ========== 关卡系统 ==========
   advanceStage() {
-    console.warn('[STATE] advanceStage called! currentStage:', this._state.currentStage, '→', this._state.currentStage + 1);
-    console.trace('[STATE] advanceStage stack');
     this._state.currentStage++;
     if (this._state.currentStage > this._state.highestStage) {
       this._state.highestStage = this._state.currentStage;
