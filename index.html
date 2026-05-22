@@ -134,7 +134,7 @@
   <script src="src/core/audio-manager.js?v=2000025"></script>
 
   <!-- 游戏模块 -->
-  <script src="src/modules/crafting/crafting-scene.js?v=2000056"></script>
+  <script src="src/modules/crafting/crafting-scene.js?v=2000057"></script>
   <script src="src/modules/battle/battle-scene.js?v=2000053"></script>
 
   <!-- 编辑器 -->
@@ -235,6 +235,11 @@
       }
 
       updateLoad(100);
+
+      // 等待 350ms 让进度条动画走满 (CSS transition 0.3s)
+      await new Promise(function(resolve) {
+        setTimeout(resolve, 350);
+      });
 
       // 等待用户点击"开始"按钮（用户交互必需，用于解锁音频）
       const startBtn = document.getElementById('start-btn');

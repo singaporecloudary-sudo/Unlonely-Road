@@ -1596,7 +1596,11 @@ CraftingScene.prototype._renderNotification = function(ctx) {
     boxY = startY + (targetY - startY) * bounce;
   }
 
-  var boxW = 520;
+  // 动态测量内容宽度以自适应提示框大小并居中
+  ctx.font = 'bold 20px "Microsoft YaHei", Arial, sans-serif';
+  var textW = ctx.measureText(text).width;
+  var totalW = 24 + 10 + textW; // 图标宽度约24px + 间距10px + 文本宽度
+  var boxW = Math.max(300, Math.min(540, totalW + 60)); // 自适应精致宽度，范围 300~540px
   var boxH = 64;
   var boxX = 360 - boxW / 2;
 
@@ -1627,19 +1631,22 @@ CraftingScene.prototype._renderNotification = function(ctx) {
   ctx.stroke();
   ctx.shadowBlur = 0;
 
+  // 计算内容整体（图标+文字）在框内绝对居中的起始坐标
+  var contentStartX = boxX + (boxW - totalW) / 2;
+
   // 警告符号图标
   if (isWarning) {
     ctx.fillStyle = '#FF3D00';
     ctx.font = 'bold 22px Arial';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText('⚠️', boxX + 40, boxY + boxH / 2);
+    ctx.fillText('⚠️', contentStartX + 12, boxY + boxH / 2);
   } else {
     ctx.fillStyle = '#00E5FF';
     ctx.font = 'bold 22px Arial';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText('⚡', boxX + 40, boxY + boxH / 2);
+    ctx.fillText('⚡', contentStartX + 12, boxY + boxH / 2);
   }
 
   // 通知文本
@@ -1647,7 +1654,7 @@ CraftingScene.prototype._renderNotification = function(ctx) {
   ctx.font = 'bold 20px "Microsoft YaHei", Arial, sans-serif';
   ctx.textAlign = 'left';
   ctx.textBaseline = 'middle';
-  ctx.fillText(text, boxX + 72, boxY + boxH / 2 + 1);
+  ctx.fillText(text, contentStartX + 24 + 10, boxY + boxH / 2 + 1);
 
   ctx.restore();
 };
