@@ -560,17 +560,27 @@ const AssetConfig = {
     var customKey = 'battle_car_lv' + level;
     var customData = null;
     try { customData = localStorage.getItem('merge_racer_asset_' + customKey); } catch(e) {}
-    if (customData) {
+    // 校验 base64 数据有效性：必须以 data:image 开头且长度 > 100
+    var validCustom = customData && typeof customData === 'string'
+      && customData.indexOf('data:image') === 0 && customData.length > 100;
+    if (validCustom) {
       var customImg = this._loadedImages['battle_car_custom_' + level];
       if (!customImg) {
         customImg = new Image();
         var self = this;
         var capturedLevel = level;
         customImg.onload = function() { self._loadedImages['battle_car_custom_' + capturedLevel] = customImg; };
+        customImg.onerror = function() {
+          // 加载失败 → 标记损坏，清缓存，下次走实体文件
+          self._loadedImages['battle_car_custom_' + capturedLevel + '_broken'] = true;
+          try { delete self._loadedImages['battle_car_custom_' + capturedLevel]; } catch(e){}
+        };
         customImg.src = customData;
         this._loadedImages['battle_car_custom_' + level] = customImg;
       }
-      if (customImg && (customImg.complete || customImg.naturalWidth > 0)) {
+      // 必须 naturalWidth > 0 才算真正可用（complete=true 包含加载失败的空图）
+      var isBroken = this._loadedImages['battle_car_custom_' + level + '_broken'];
+      if (!isBroken && customImg && customImg.naturalWidth > 0) {
         this._drawImageFit(ctx, customImg, x, y, width, height);
         return true;
       }
@@ -579,7 +589,7 @@ const AssetConfig = {
     // 2. 尝试加载战斗精灵文件（assets/vehicles/battle/battle_car_lv{N}.png）
     var battleFilePath = this.battleCars.battlePath.replace('{level}', level);
     var battleFileImg = this._getCustomOrLoaded(battleFilePath);
-    if (battleFileImg && (battleFileImg.complete || battleFileImg.naturalWidth > 0)) {
+    if (battleFileImg && battleFileImg.naturalWidth > 0) {
       this._drawImageFit(ctx, battleFileImg, x, y, width, height);
       return true;
     }
