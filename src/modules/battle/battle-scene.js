@@ -4149,6 +4149,11 @@ class BattleScene {
         this.state.addGems(rewards.gems);
         this.state.advanceStage();
 
+        // 刷新排行榜关卡最高记录
+        if (this.state && this.state.updateMaxStage) {
+          this.state.updateMaxStage(this.stageLevel);
+        }
+
         // 标记：胜利返回，触发大量金币飞入动画！
         const craftingScene = this.engine.scenes['crafting'];
         if (craftingScene) {
@@ -4166,6 +4171,12 @@ class BattleScene {
         const endlessCfg = window.GameConfig?.stages?.endless || {};
         const coinMult = endlessCfg.coinMultiplier || 1.0;
         const finalCoins = Math.floor(this.earnedCoins * coinMult);
+
+        // 刷新排行榜无尽模式最高距离记录
+        if (this.state && this.state.updateMaxEndless) {
+          this.state.updateMaxEndless(this.distance);
+        }
+
         if (this._resultBtns && inBtn(this._resultBtns.retry)) {
           this.state.addCoins(finalCoins);
           this._initStage();

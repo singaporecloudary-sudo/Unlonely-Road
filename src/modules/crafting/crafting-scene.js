@@ -69,7 +69,7 @@ function CraftingScene() {
     // ===== 左侧竖排按钮 =====
     settingsBtn:   { x: 15,  y: 100, w: 56,  h: 56 },
     taskBtn:       { x: 15,  y: 165, w: 56,  h: 56 },
-    vipBtn:        { x: 15,  y: 230, w: 56,  h: 56 },
+    rankBtn:       { x: 15,  y: 230, w: 56,  h: 56 },
 
     // ===== 右侧竖排按钮 =====
     luckyBtn:      { x: 649, y: 100, w: 56,  h: 56 },
@@ -361,6 +361,11 @@ CraftingScene.prototype.render = function(ctx) {
   if (this._droneOpen) {
     this._renderDroneEditor(ctx);
   }
+
+  // 14. 排行榜弹窗（最顶层）
+  if (this._rankOpen) {
+    this._renderRankPanel(ctx);
+  }
 };
 
 // ========== 1. 背景 ==========
@@ -462,9 +467,33 @@ CraftingScene.prototype._renderTopBar = function(ctx) {
   ctx.textBaseline = 'alphabetic';
 };
 
-// ========== 3. 左右侧按钮（已禁用）==========
+// ========== 3. 左右侧按钮（在 Canvas 上精细绘制）==========
 CraftingScene.prototype._renderSideButtons = function(ctx) {
-  // 不渲染任何侧边按钮
+  var L = this.layout;
+  
+  // 1. 设置按钮
+  var sb = L.settingsBtn;
+  ctx.fillStyle = 'rgba(12, 28, 48, 0.75)';
+  this._fillRoundRect(ctx, sb.x, sb.y, sb.w, sb.h, 12);
+  ctx.strokeStyle = 'rgba(0, 229, 255, 0.35)';
+  this._strokeRoundRect(ctx, sb.x, sb.y, sb.w, sb.h, 12, 1.5);
+  this._drawIconButton(ctx, sb.x, sb.y, sb.w, sb.h, '⚙️', '设置');
+
+  // 2. 任务按钮
+  var tb = L.taskBtn;
+  ctx.fillStyle = 'rgba(12, 28, 48, 0.75)';
+  this._fillRoundRect(ctx, tb.x, tb.y, tb.w, tb.h, 12);
+  ctx.strokeStyle = 'rgba(0, 229, 255, 0.35)';
+  this._strokeRoundRect(ctx, tb.x, tb.y, tb.w, tb.h, 12, 1.5);
+  this._drawIconButton(ctx, tb.x, tb.y, tb.w, tb.h, '📋', '任务');
+
+  // 3. 排行榜按钮（原 VIP 按钮）
+  var rb = L.rankBtn;
+  ctx.fillStyle = 'rgba(12, 28, 48, 0.75)';
+  this._fillRoundRect(ctx, rb.x, rb.y, rb.w, rb.h, 12);
+  ctx.strokeStyle = 'rgba(255, 152, 0, 0.45)'; // 尊贵金橙色描边
+  this._strokeRoundRect(ctx, rb.x, rb.y, rb.w, rb.h, 12, 1.5);
+  this._drawIconButton(ctx, rb.x, rb.y, rb.w, rb.h, '👑', '排行');
 };
 
 // 图标按钮辅助
@@ -1661,9 +1690,544 @@ CraftingScene.prototype._renderNotification = function(ctx) {
   ctx.restore();
 };
 
+// ========== 预设 6 款机甲科幻风矢量头像程序化渲染 ==========
+CraftingScene.prototype._drawVectorAvatar = function(ctx, avatarId, cx, cy, size) {
+  ctx.save();
+
+  // 底色：深灰蓝圆形背景
+  ctx.fillStyle = '#0b1625';
+  ctx.beginPath();
+  ctx.arc(cx, cy, size / 2, 0, Math.PI * 2);
+  ctx.fill();
+
+  // 默认机械外圈框（带微弱发光）
+  ctx.strokeStyle = 'rgba(0, 229, 255, 0.4)';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.arc(cx, cy, size / 2 - 1, 0, Math.PI * 2);
+  ctx.stroke();
+
+  // 精细绘制特定头像图案
+  var id = Math.max(0, Math.min(5, Math.floor(avatarId || 0)));
+  switch (id) {
+    case 0: // 💥 战车准星 (Crosshair)
+      ctx.strokeStyle = '#00E5FF';
+      ctx.lineWidth = 1.5;
+      // 内瞄准环
+      ctx.beginPath();
+      ctx.arc(cx, cy, size * 0.22, 0, Math.PI * 2);
+      ctx.stroke();
+      // 四向十字准线
+      ctx.beginPath();
+      ctx.moveTo(cx - size * 0.4, cy); ctx.lineTo(cx - size * 0.08, cy);
+      ctx.moveTo(cx + size * 0.08, cy); ctx.lineTo(cx + size * 0.4, cy);
+      ctx.moveTo(cx, cy - size * 0.4); ctx.lineTo(cx, cy - size * 0.08);
+      ctx.moveTo(cx, cy + size * 0.08); ctx.lineTo(cx, cy + size * 0.4);
+      ctx.stroke();
+      // 四角微小弧度刻度线
+      ctx.beginPath();
+      ctx.arc(cx, cy, size * 0.34, -Math.PI * 0.1, Math.PI * 0.1);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(cx, cy, size * 0.34, Math.PI * 0.9, Math.PI * 1.1);
+      ctx.stroke();
+      // 中心红点
+      ctx.fillStyle = '#FF3D00';
+      ctx.beginPath();
+      ctx.arc(cx, cy, 2.5, 0, Math.PI * 2);
+      ctx.fill();
+      break;
+
+    case 1: // 🏎️ 疾速车轮 (Wheel)
+      // 轮胎外橡胶圈
+      ctx.fillStyle = '#1c2630';
+      ctx.beginPath();
+      ctx.arc(cx, cy, size * 0.38, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#37474f';
+      ctx.lineWidth = 4;
+      ctx.stroke();
+      // 科技轮毂
+      ctx.strokeStyle = '#00E5FF';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.arc(cx, cy, size * 0.22, 0, Math.PI * 2);
+      ctx.stroke();
+      // 五向发光辐条
+      for (var a = 0; a < 5; a++) {
+        var angle = a * Math.PI * 2 / 5 - Math.PI / 2;
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.lineTo(cx + Math.cos(angle) * size * 0.21, cy + Math.sin(angle) * size * 0.21);
+        ctx.stroke();
+      }
+      // 中心轴帽
+      ctx.fillStyle = '#FFFFFF';
+      ctx.beginPath();
+      ctx.arc(cx, cy, 3, 0, Math.PI * 2);
+      ctx.fill();
+      break;
+
+    case 2: // ⚡ 机械闪电 (Volt)
+      ctx.fillStyle = '#FF9800'; // 火焰橙
+      ctx.shadowColor = 'rgba(255, 152, 0, 0.7)';
+      ctx.shadowBlur = 8;
+      ctx.beginPath();
+      ctx.moveTo(cx + size * 0.08, cy - size * 0.35);
+      ctx.lineTo(cx - size * 0.22, cy + size * 0.04);
+      ctx.lineTo(cx - size * 0.04, cy + size * 0.04);
+      ctx.lineTo(cx - size * 0.12, cy + size * 0.36);
+      ctx.lineTo(cx + size * 0.24, cy - size * 0.02);
+      ctx.lineTo(cx + size * 0.05, cy - size * 0.02);
+      ctx.closePath();
+      ctx.fill();
+      break;
+
+    case 3: // 🔫 枪械侧影 (Gun)
+      ctx.fillStyle = '#ECEFF1'; // 概念白
+      ctx.shadowColor = 'rgba(255, 255, 255, 0.5)';
+      ctx.shadowBlur = 6;
+      ctx.beginPath();
+      // 简易绘制多边形枪械侧影
+      ctx.moveTo(cx - size * 0.28, cy - size * 0.1);
+      ctx.lineTo(cx + size * 0.26, cy - size * 0.1);
+      ctx.lineTo(cx + size * 0.26, cy + size * 0.04);
+      ctx.lineTo(cx + size * 0.14, cy + size * 0.04);
+      ctx.lineTo(cx + size * 0.04, cy + size * 0.32); // 握把
+      ctx.lineTo(cx - size * 0.06, cy + size * 0.32);
+      ctx.lineTo(cx - size * 0.02, cy + size * 0.04);
+      ctx.lineTo(cx - size * 0.28, cy + size * 0.04);
+      ctx.closePath();
+      ctx.fill();
+      break;
+
+    case 4: // 🔥 赛道烈焰 (Flame)
+      var grad = ctx.createLinearGradient(cx, cy + size * 0.32, cx, cy - size * 0.32);
+      grad.addColorStop(0, '#D84315'); // 炽红
+      grad.addColorStop(0.5, '#FF8F00'); // 橙黄
+      grad.addColorStop(1, '#FFEB3B'); // 明黄
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      // 绘制流线型上升火焰
+      ctx.moveTo(cx, cy + size * 0.32);
+      ctx.quadraticCurveTo(cx - size * 0.28, cy + size * 0.08, cx - size * 0.22, cy - size * 0.12);
+      ctx.quadraticCurveTo(cx - size * 0.08, cy - size * 0.04, cx, cy - size * 0.38);
+      ctx.quadraticCurveTo(cx + size * 0.08, cy - size * 0.04, cx + size * 0.22, cy - size * 0.12);
+      ctx.quadraticCurveTo(cx + size * 0.28, cy + size * 0.08, cx, cy + size * 0.32);
+      ctx.closePath();
+      ctx.fill();
+      break;
+
+    case 5: // 👑 竞速王冠 (Crown)
+      ctx.fillStyle = '#FFD54F'; // 亮金色
+      ctx.shadowColor = 'rgba(255, 213, 79, 0.6)';
+      ctx.shadowBlur = 8;
+      ctx.beginPath();
+      // 绘制切角王冠
+      ctx.moveTo(cx - size * 0.32, cy + size * 0.2);
+      ctx.lineTo(cx - size * 0.32, cy - size * 0.15);
+      ctx.lineTo(cx - size * 0.14, cy + size * 0.02);
+      ctx.lineTo(cx, cy - size * 0.22); // 主尖
+      ctx.lineTo(cx + size * 0.14, cy + size * 0.02);
+      ctx.lineTo(cx + size * 0.32, cy - size * 0.15);
+      ctx.lineTo(cx + size * 0.32, cy + size * 0.2);
+      ctx.closePath();
+      ctx.fill();
+      break;
+  }
+
+  ctx.restore();
+};
+
+// ========== 🎨 赛博机甲风全屏排行榜弹窗 UI 渲染 ==========
+CraftingScene.prototype._renderRankPanel = function(ctx) {
+  var W = 720, H = 1280;
+  ctx.save();
+
+  // 1. 半透明高品质灰黑科技遮罩背景
+  ctx.fillStyle = 'rgba(3, 8, 18, 0.94)';
+  ctx.fillRect(0, 0, W, H);
+
+  // 2. 排行榜面板尺寸及定位
+  var panelW = 640;
+  var panelH = 1000;
+  var px = (W - panelW) / 2;  // 40
+  var py = (H - panelH) / 2; // 140
+  var pch = 20; // 科技切角尺寸
+
+  // ====== 3. 面板大底框（赛博朋克深蓝黑渐变+外发光） ======
+  ctx.shadowColor = 'rgba(0, 180, 255, 0.3)';
+  ctx.shadowBlur = 24;
+  this._fillChamferRect(ctx, px, py, panelW, panelH, pch);
+  ctx.shadowBlur = 0;
+
+  var bgGrad = ctx.createLinearGradient(px, py, px, py + panelH);
+  bgGrad.addColorStop(0, '#0a172c');
+  bgGrad.addColorStop(0.5, '#060f1c');
+  bgGrad.addColorStop(1, '#03060a');
+  ctx.fillStyle = bgGrad;
+  this._fillChamferRect(ctx, px, py, panelW, panelH, pch);
+
+  // 炫彩双边框
+  ctx.strokeStyle = 'rgba(0, 229, 255, 0.55)'; // 亮青
+  this._strokeChamferRect(ctx, px, py, panelW, panelH, pch, 2);
+  ctx.strokeStyle = 'rgba(0, 120, 200, 0.15)';
+  this._strokeChamferRect(ctx, px + 3, py + 3, panelW - 6, panelH - 6, pch - 2, 1);
+
+  // ====== 4. 赛道战车暗纹背景（提升画面张力与游戏质感） ======
+  ctx.strokeStyle = 'rgba(0, 229, 255, 0.025)';
+  ctx.lineWidth = 1;
+  // 赛道透视斜线
+  for (var i = -4; i <= 4; i++) {
+    ctx.beginPath();
+    ctx.moveTo(px + panelW / 2, py + panelH * 0.2);
+    ctx.lineTo(px + panelW / 2 + i * 90, py + panelH * 0.95);
+    ctx.stroke();
+  }
+  // 机甲斜切装饰 ///
+  ctx.strokeStyle = 'rgba(255, 152, 0, 0.04)';
+  ctx.lineWidth = 1.5;
+  for (var k = 0; k < 6; k++) {
+    ctx.beginPath();
+    ctx.moveTo(px + 40 + k * 14, py + panelH - 45);
+    ctx.lineTo(px + 50 + k * 14, py + panelH - 25);
+    ctx.stroke();
+  }
+
+  // ====== 5. 右上角科技风关闭按钮 "X" ======
+  var closeX = px + panelW - 55, closeY = py + 20, closeS = 36;
+  this._closeBtnRect = { x: closeX, y: closeY, w: closeS, h: closeS }; // 保存热区
+
+  ctx.fillStyle = 'rgba(0, 229, 255, 0.12)';
+  ctx.beginPath();
+  ctx.rect(closeX, closeY, closeS, closeS);
+  ctx.fill();
+  ctx.strokeStyle = '#00E5FF';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+  // 绘制 "X"
+  ctx.strokeStyle = '#FFFFFF';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(closeX + 11, closeY + 11); ctx.lineTo(closeX + closeS - 11, closeY + closeS - 11);
+  ctx.moveTo(closeX + closeS - 11, closeY + 11); ctx.lineTo(closeX + 11, closeY + closeS - 11);
+  ctx.stroke();
+
+  // ====== 6. 顶部独立双标签页 (Tabs) 切换 ======
+  var tabW = 210, tabH = 50;
+  var tabAY = py + 30;
+  var tabAX = px + 60;
+  var tabBX = px + 290;
+  this._rankTabRects = {
+    stage: { x: tabAX, y: tabAY, w: tabW, h: tabH },
+    endless: { x: tabBX, y: tabAY, w: tabW, h: tabH }
+  };
+
+  if (typeof this._rankTab === 'undefined') this._rankTab = 'stage'; // 默认关卡榜
+
+  // A. 关卡榜按钮
+  var actA = this._rankTab === 'stage';
+  var gradA = ctx.createLinearGradient(tabAX, tabAY, tabAX, tabAY + tabH);
+  if (actA) {
+    gradA.addColorStop(0, '#FF9800'); // 亮橙色
+    gradA.addColorStop(1, '#FF5722');
+    ctx.fillStyle = gradA;
+    this._fillChamferRect(ctx, tabAX, tabAY, tabW, tabH, 8);
+    ctx.strokeStyle = '#FFFFFF';
+    this._strokeChamferRect(ctx, tabAX, tabAY, tabW, tabH, 8, 1.5);
+  } else {
+    ctx.fillStyle = '#0f2238';
+    this._fillChamferRect(ctx, tabAX, tabAY, tabW, tabH, 8);
+    ctx.strokeStyle = 'rgba(0, 229, 255, 0.35)';
+    this._strokeChamferRect(ctx, tabAX, tabAY, tabW, tabH, 8, 1);
+  }
+  ctx.fillStyle = actA ? '#FFFFFF' : '#88AABF';
+  ctx.font = 'bold 16px "Microsoft YaHei", Arial, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('关卡排行榜', tabAX + tabW / 2, tabAY + tabH / 2 + 1);
+
+  // B. 无尽榜按钮
+  var actB = this._rankTab === 'endless';
+  var gradB = ctx.createLinearGradient(tabBX, tabAY, tabBX, tabAY + tabH);
+  if (actB) {
+    gradB.addColorStop(0, '#FF9800');
+    gradB.addColorStop(1, '#FF5722');
+    ctx.fillStyle = gradB;
+    this._fillChamferRect(ctx, tabBX, tabAY, tabW, tabH, 8);
+    ctx.strokeStyle = '#FFFFFF';
+    this._strokeChamferRect(ctx, tabBX, tabAY, tabW, tabH, 8, 1.5);
+  } else {
+    ctx.fillStyle = '#0f2238';
+    this._fillChamferRect(ctx, tabBX, tabAY, tabW, tabH, 8);
+    ctx.strokeStyle = 'rgba(0, 229, 255, 0.35)';
+    this._strokeChamferRect(ctx, tabBX, tabAY, tabW, tabH, 8, 1);
+  }
+  ctx.fillStyle = actB ? '#FFFFFF' : '#88AABF';
+  ctx.fillText('无尽模式榜', tabBX + tabW / 2, tabAY + tabH / 2 + 1);
+
+  // ====== 7. 排行榜列表渲染 (Top 10) ======
+  var list = this._rankTab === 'stage' 
+    ? this.state.getStageLeaderboard() 
+    : this.state.getEndlessLeaderboard();
+
+  var listStartY = py + 105;
+  var rowH = 55;
+
+  for (var i = 0; i < 10; i++) {
+    var item = list[i];
+    var rowY = listStartY + i * rowH;
+    var rank = i + 1;
+
+    // A. 绘制单条背景（高亮区分玩家本人）
+    if (item && item.isPlayer) {
+      // 玩家本人高贵亮橙色发光背景框
+      ctx.fillStyle = 'rgba(255, 152, 0, 0.12)';
+      this._fillChamferRect(ctx, px + 25, rowY, panelW - 50, rowH - 6, 6);
+      ctx.strokeStyle = '#FF9800';
+      ctx.shadowColor = 'rgba(255, 152, 0, 0.4)';
+      ctx.shadowBlur = 8;
+      this._strokeChamferRect(ctx, px + 25, rowY, panelW - 50, rowH - 6, 6, 1.5);
+      ctx.shadowBlur = 0;
+    } else {
+      // 奇偶条目底色交替
+      ctx.fillStyle = (i % 2 === 0) ? 'rgba(15, 34, 56, 0.28)' : 'rgba(8, 17, 30, 0.42)';
+      this._fillChamferRect(ctx, px + 25, rowY, panelW - 50, rowH - 6, 6);
+      ctx.strokeStyle = 'rgba(0, 229, 255, 0.1)';
+      this._strokeChamferRect(ctx, px + 25, rowY, panelW - 50, rowH - 6, 6, 1);
+    }
+
+    if (!item) {
+      // 空白占位符
+      ctx.fillStyle = 'rgba(255,255,255,0.06)';
+      ctx.font = 'italic 14px Arial';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('期待强者登顶...', px + panelW / 2, rowY + rowH / 2 - 3);
+      continue;
+    }
+
+    // B. 绘制排名徽章
+    var medalCX = px + 55, medalCY = rowY + rowH / 2 - 3, medalR = 15;
+    if (rank === 1) { // 🥇 金牌 + 火焰
+      ctx.save();
+      ctx.shadowColor = 'rgba(255, 215, 0, 0.8)';
+      ctx.shadowBlur = 12;
+      ctx.fillStyle = '#FFD700'; // 纯金
+      ctx.beginPath(); ctx.arc(medalCX, medalCY, medalR, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#000000';
+      ctx.font = 'bold 15px Arial';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText('1', medalCX, medalCY + 1);
+      ctx.restore();
+    } else if (rank === 2) { // 🥈 银牌
+      ctx.save();
+      ctx.shadowColor = 'rgba(224, 224, 224, 0.7)';
+      ctx.shadowBlur = 10;
+      ctx.fillStyle = '#E0E0E0'; // 纯银
+      ctx.beginPath(); ctx.arc(medalCX, medalCY, medalR, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#000000';
+      ctx.font = 'bold 15px Arial';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText('2', medalCX, medalCY + 1);
+      ctx.restore();
+    } else if (rank === 3) { // 🥉 铜牌
+      ctx.save();
+      ctx.shadowColor = 'rgba(205, 127, 50, 0.6)';
+      ctx.shadowBlur = 8;
+      ctx.fillStyle = '#CD7F32'; // 青铜
+      ctx.beginPath(); ctx.arc(medalCX, medalCY, medalR, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#000000';
+      ctx.font = 'bold 15px Arial';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText('3', medalCX, medalCY + 1);
+      ctx.restore();
+    } else { // 4~10名常规银灰小圆环
+      ctx.fillStyle = '#22384f';
+      ctx.beginPath(); ctx.arc(medalCX, medalCY, medalR - 1, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = '#4A6572';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      ctx.fillStyle = '#88AABF';
+      ctx.font = 'bold 13px Arial';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(rank, medalCX, medalCY + 1);
+    }
+
+    // C. 绘制头像
+    var avCX = px + 105, avCY = rowY + rowH / 2 - 3;
+    // 机械外边框
+    ctx.strokeStyle = 'rgba(0, 229, 255, 0.25)';
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.arc(avCX, avCY, 19, 0, Math.PI * 2); ctx.stroke();
+    // 渲染矢量头像
+    this._drawVectorAvatar(ctx, item.avatar, avCX, avCY, 34);
+
+    // D. 绘制玩家名字
+    ctx.fillStyle = item.isPlayer ? '#FFD54F' : '#E0F7FA'; // 玩家高亮黄色，AI为青白色
+    ctx.font = 'bold 15px "Microsoft YaHei", Arial, sans-serif';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    var dispName = item.name;
+    if (item.isPlayer) dispName += ' (我)';
+    ctx.fillText(dispName, px + 140, rowY + rowH / 2 - 2);
+
+    // E. 绘制分数
+    var scoreText = '';
+    if (this._rankTab === 'stage') {
+      scoreText = '关卡 ' + item.score;
+    } else {
+      scoreText = item.score + ' m';
+    }
+    ctx.fillStyle = '#00E5FF'; // 赛博亮青色
+    ctx.font = 'bold 15px Arial, sans-serif';
+    ctx.textAlign = 'right';
+    ctx.fillText(scoreText, px + panelW - 50, rowY + rowH / 2 - 2);
+  }
+
+  // ====== 8. 底部常驻：玩家专属资料极速编辑卡片 ======
+  var editY = py + 675;
+  ctx.strokeStyle = 'rgba(0, 229, 255, 0.25)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(px + 25, editY);
+  ctx.lineTo(px + panelW - 25, editY);
+  ctx.stroke();
+
+  // 底部资料大背景
+  ctx.fillStyle = 'rgba(10, 25, 48, 0.55)';
+  this._fillChamferRect(ctx, px + 25, editY + 12, panelW - 50, panelH - (editY - py) - 34, 12);
+  ctx.strokeStyle = 'rgba(0, 229, 255, 0.35)';
+  this._strokeChamferRect(ctx, px + 25, editY + 12, panelW - 50, panelH - (editY - py) - 34, 12, 1.5);
+
+  // 玩家大头像
+  var pAvCX = px + 75, pAvCY = editY + 68;
+  ctx.strokeStyle = '#00E5FF';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.arc(pAvCX, pAvCY, 34, 0, Math.PI * 2); ctx.stroke();
+  this._drawVectorAvatar(ctx, this.state.get('playerAvatar'), pAvCX, pAvCY, 64);
+
+  // 玩家大名字
+  ctx.fillStyle = '#FFD54F';
+  ctx.font = 'bold 24px "Microsoft YaHei", Arial, sans-serif';
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(this.state.get('playerName') || '狂暴车神', px + 135, editY + 50);
+
+  // 副标题描述
+  ctx.fillStyle = '#88AABF';
+  ctx.font = '12px "Microsoft YaHei", Arial, sans-serif';
+  ctx.fillText('点击下方头像一键更换资料，或点击🎲随机起名', px + 135, editY + 82);
+
+  // 🎲 随机起名按钮
+  var rNameX = px + panelW - 195, rNameY = editY + 32, rNameW = 145, rNameH = 46;
+  this._randomNameBtnRect = { x: rNameX, y: rNameY, w: rNameW, h: rNameH }; // 保存热区
+
+  var rGrad = ctx.createLinearGradient(rNameX, rNameY, rNameX, rNameY + rNameH);
+  rGrad.addColorStop(0, '#00b0ff');
+  rGrad.addColorStop(1, '#00e5ff');
+  ctx.fillStyle = rGrad;
+  this._fillChamferRect(ctx, rNameX, rNameY, rNameW, rNameH, 6);
+  ctx.strokeStyle = '#FFFFFF';
+  this._strokeChamferRect(ctx, rNameX, rNameY, rNameW, rNameH, 6, 1.5);
+
+  ctx.fillStyle = '#FFFFFF';
+  ctx.font = 'bold 15px "Microsoft YaHei", Arial, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('🎲 随机昵称', rNameX + rNameW / 2, rNameY + rNameH / 2 + 1);
+
+  // 头像选择列表网格一字排开
+  var avGridY = editY + 124;
+  var avBoxSize = 48;
+  var avBoxGap = 16;
+  var avGridStartX = px + 135;
+  this._avatarGridRects = []; // 储存头像网格各按钮的坐标
+
+  for (var k = 0; k < 6; k++) {
+    var avBoxX = avGridStartX + k * (avBoxSize + avBoxGap);
+    this._avatarGridRects.push({ x: avBoxX, y: avGridY, w: avBoxSize, h: avBoxSize, avatarId: k });
+
+    var isSel = (this.state.get('playerAvatar') === k);
+    if (isSel) {
+      // 选中发光状态
+      ctx.fillStyle = 'rgba(0, 229, 255, 0.25)';
+      this._fillChamferRect(ctx, avBoxX, avGridY, avBoxSize, avBoxSize, 6);
+      ctx.strokeStyle = '#00E5FF';
+      ctx.shadowColor = '#00E5FF';
+      ctx.shadowBlur = 8;
+      this._strokeChamferRect(ctx, avBoxX, avGridY, avBoxSize, avBoxSize, 6, 2);
+      ctx.shadowBlur = 0;
+    } else {
+      ctx.fillStyle = '#102236';
+      this._fillChamferRect(ctx, avBoxX, avGridY, avBoxSize, avBoxSize, 6);
+      ctx.strokeStyle = 'rgba(0, 229, 255, 0.4)';
+      this._strokeChamferRect(ctx, avBoxX, avGridY, avBoxSize, avBoxSize, 6, 1);
+    }
+
+    // 在小格子里绘制头像
+    this._drawVectorAvatar(ctx, k, avBoxX + avBoxSize / 2, avGridY + avBoxSize / 2, 38);
+  }
+
+  ctx.restore();
+};
+
+// ========== 📊 排行榜交互点击与资料快速修改处理 ==========
+CraftingScene.prototype._handleRankClick = function(pos) {
+  var inRect = function(r) { return r && pos.x >= r.x && pos.x <= r.x + r.w && pos.y >= r.y && pos.y <= r.y + r.h; };
+
+  // 1. 关闭按钮 "X" 点击
+  if (inRect(this._closeBtnRect)) {
+    this._rankOpen = false;
+    if (window.AudioManager && window.AudioManager.click) window.AudioManager.click();
+    return;
+  }
+
+  // 2. 标签切换点击
+  if (this._rankTabRects) {
+    if (inRect(this._rankTabRects.stage) && this._rankTab !== 'stage') {
+      this._rankTab = 'stage';
+      if (window.AudioManager && window.AudioManager.click) window.AudioManager.click();
+      return;
+    }
+    if (inRect(this._rankTabRects.endless) && this._rankTab !== 'endless') {
+      this._rankTab = 'endless';
+      if (window.AudioManager && window.AudioManager.click) window.AudioManager.click();
+      return;
+    }
+  }
+
+  // 3. 🎲 随机昵称按钮点击
+  if (inRect(this._randomNameBtnRect)) {
+    if (this.state && this.state.randomizeName) {
+      this.state.randomizeName();
+      if (window.AudioManager && window.AudioManager.click) window.AudioManager.click();
+    }
+    return;
+  }
+
+  // 4. 头像微风格子一键选用网格点击
+  if (this._avatarGridRects) {
+    for (var i = 0; i < this._avatarGridRects.length; i++) {
+      var av = this._avatarGridRects[i];
+      if (inRect(av)) {
+        if (this.state && this.state.setAvatar) {
+          this.state.setAvatar(av.avatarId);
+          if (window.AudioManager && window.AudioManager.click) window.AudioManager.click();
+        }
+        return;
+      }
+    }
+  }
+};
+
 // ========== 交互处理 ==========
 CraftingScene.prototype._onTouchStart = function(pos) {
-  // 无人机编辑器弹窗拦截（最优先）
+  // 排行榜弹窗打开时拦截所有点击（最优先）
+  if (this._rankOpen) {
+    this._handleRankClick(pos);
+    return;
+  }
+  // 无人机编辑器弹窗拦截
   if (this._droneOpen) {
     this._handleDroneClick(pos);
     return;
@@ -1990,8 +2554,9 @@ CraftingScene.prototype._handleButtonClick = function(pos) {
     this.showNotification('设置(开发中)');
   } else if (inRect(L.taskBtn)) {
     this.showNotification('任务(开发中)');
-  } else if (inRect(L.vipBtn)) {
-    this.showNotification('VIP(开发中)');
+  } else if (inRect(L.rankBtn)) {
+    this._rankOpen = true;
+    if (window.AudioManager && window.AudioManager.click) window.AudioManager.click();
   }
 
   // 右侧按钮

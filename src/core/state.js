@@ -7,6 +7,10 @@ class GameState {
   constructor() {
     this._state = this._getDefaultState();
     this._listeners = {};
+    // 自动为新用户/老存档初始化随机名字
+    if (!this._state.playerName) {
+      this.randomizeName(true);
+    }
   }
 
   _getDefaultState() {
@@ -56,6 +60,14 @@ class GameState {
       totalKills: 0,
       totalDistance: 0,
       highestStage: 1,
+
+      // 玩家个人资料及排行榜最高记录
+      playerName: '',            // 玩家昵称
+      playerAvatar: 0,           // 玩家头像 ID (0~5)
+      maxStageReached: 1,        // 通关最高关卡数
+      maxStageTime: Date.now(),  // 达成关卡记录时间
+      maxEndlessDist: 0,         // 无尽历史最高距离 (m)
+      maxEndlessTime: Date.now() // 达成无尽记录时间
     };
   }
 
@@ -391,6 +403,106 @@ class GameState {
 
   _genUID() {
     return 'car_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6);
+  }
+
+  // ========== 排行榜与个人资料方法 ==========
+  randomizeName(silent) {
+    const prefixes = ['狂暴', '疾风', '烈焰', '雷霆', '幽灵', '极速', '机甲', '合金', '重装', '虚空', '电光', '钢骨', '风暴', '暗夜', '终极'];
+    const suffixes = ['车神', '射手', '暴击手', '狂飙者', '领跑者', '火炮', '引擎', '核心', '幻影', '闪电', '黑帮', '王牌', '猎手', '先锋', '暴风'];
+    const p = prefixes[Math.floor(Math.random() * prefixes.length)];
+    const s = suffixes[Math.floor(Math.random() * suffixes.length)];
+    const name = p + s;
+    this._state.playerName = name;
+    if (!silent) {
+      this._notify('playerName', null, name);
+    }
+    return name;
+  }
+
+  setAvatar(id) {
+    var val = Math.max(0, Math.min(5, Math.floor(id)));
+    this._state.playerAvatar = val;
+    this._notify('playerAvatar', null, val);
+  }
+
+  updateMaxStage(stage) {
+    var sVal = Math.max(1, Math.floor(stage));
+    if (sVal > this._state.maxStageReached) {
+      this._state.maxStageReached = sVal;
+      this._state.maxStageTime = Date.now();
+      this._notify('maxStageReached', null, sVal);
+    }
+  }
+
+  updateMaxEndless(dist) {
+    var dVal = Math.max(0, Math.floor(dist));
+    if (dVal > this._state.maxEndlessDist) {
+      this._state.maxEndlessDist = dVal;
+      this._state.maxEndlessTime = Date.now();
+      this._notify('maxEndlessDist', null, dVal);
+    }
+  }
+
+  getStageLeaderboard() {
+    const VIRTUAL_AI_PLAYERS = [
+      { name: '雷霆先锋', avatar: 1, score: 15, time: 1779430000000 },
+      { name: '合金暴击手', avatar: 2, score: 12, time: 1779431000000 },
+      { name: '疾风狂飙者', avatar: 3, score: 9,  time: 1779432000000 },
+      { name: '幽灵引擎', avatar: 4, score: 7,  time: 1779433000000 },
+      { name: '烈焰核心', avatar: 5, score: 5,  time: 1779434000000 },
+      { name: '极速车神', avatar: 0, score: 4,  time: 1779435000000 },
+      { name: '重装幻影', avatar: 1, score: 3,  time: 1779436000000 },
+      { name: '虚空闪电', avatar: 2, score: 2,  time: 1779437000000 },
+      { name: '电光王牌', avatar: 3, score: 1,  time: 1779438000000 }
+    ];
+
+    const playerRecord = {
+      name: this._state.playerName || '狂暴车神',
+      avatar: this._state.playerAvatar || 0,
+      score: this._state.maxStageReached || 1,
+      time: this._state.maxStageTime || Date.now(),
+      isPlayer: true
+    };
+
+    const list = VIRTUAL_AI_PLAYERS.concat(playerRecord);
+
+    list.sort((a, b) => {
+      if (b.score !== a.score) return b.score - a.score;
+      return a.time - b.time;
+    });
+
+    return list.slice(0, 10);
+  }
+
+  getEndlessLeaderboard() {
+    const VIRTUAL_AI_PLAYERS = [
+      { name: '雷霆先锋', avatar: 1, score: 5820, time: 1779430000000 },
+      { name: '合金暴击手', avatar: 2, score: 4210, time: 1779431000000 },
+      { name: '疾风狂飙者', avatar: 3, score: 3150, time: 1779432000000 },
+      { name: '幽灵引擎', avatar: 4, score: 2280, time: 1779433000000 },
+      { name: '烈焰核心', avatar: 5, score: 1560, time: 1779434000000 },
+      { name: '极速车神', avatar: 0, score: 1120, time: 1779435000000 },
+      { name: '重装幻影', avatar: 1, score: 850,  time: 1779436000000 },
+      { name: '虚空闪电', avatar: 2, score: 480,  time: 1779437000000 },
+      { name: '电光王牌', avatar: 3, score: 180,  time: 1779438000000 }
+    ];
+
+    const playerRecord = {
+      name: this._state.playerName || '狂暴车神',
+      avatar: this._state.playerAvatar || 0,
+      score: this._state.maxEndlessDist || 0,
+      time: this._state.maxEndlessTime || Date.now(),
+      isPlayer: true
+    };
+
+    const list = VIRTUAL_AI_PLAYERS.concat(playerRecord);
+
+    list.sort((a, b) => {
+      if (b.score !== a.score) return b.score - a.score;
+      return a.time - b.time;
+    });
+
+    return list.slice(0, 10);
   }
 }
 
