@@ -66,10 +66,10 @@ function CraftingScene() {
     cpsDisplay:    { x: 200, y: 5,  w: 320, h: 38 },   // 大号每秒收益
     gemsDisplay:   { x: 560, y: 6,  w: 150, h: 34 },   // 钻石
 
-    // ===== 左侧竖排按钮 =====
-    settingsBtn:   { x: 15,  y: 100, w: 56,  h: 56 },
-    taskBtn:       { x: 15,  y: 165, w: 56,  h: 56 },
-    rankBtn:       { x: 15,  y: 230, w: 56,  h: 56 },
+    // ===== 左侧横排按钮 =====
+    settingsBtn:   { x: 20,  y: 72,  w: 56,  h: 56 },
+    taskBtn:       { x: 88,  y: 72,  w: 56,  h: 56 },
+    rankBtn:       { x: 156, y: 72,  w: 56,  h: 56 },
 
     // ===== 右侧竖排按钮 =====
     luckyBtn:      { x: 649, y: 100, w: 56,  h: 56 },
@@ -309,11 +309,11 @@ CraftingScene.prototype.render = function(ctx) {
   // 2. 顶部栏
   this._renderTopBar(ctx);
 
-  // 3. 左右侧按钮
-  this._renderSideButtons(ctx);
-
   // 4. 中央车辆展示区
   this._renderCarDisplay(ctx);
+
+  // 3. 左右侧按钮（在中央面板后绘制，保证图层处于上方）
+  this._renderSideButtons(ctx);
 
   // 5. 功能按钮 6. 功能按钮行(Auto/Stage/Race)
   this._renderActionButtons(ctx);
