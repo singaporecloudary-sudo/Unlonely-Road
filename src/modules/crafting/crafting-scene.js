@@ -1955,6 +1955,8 @@ CraftingScene.prototype._renderVictoryCoinParticles = function(ctx) {
   }
   ctx.restore();
 };
+
+CraftingScene.prototype._handleButtonClick = function(pos) {
   var L = this.layout;
   var inRect = function(r) { return pos.x >= r.x && pos.x <= r.x + r.w && pos.y >= r.y && pos.y <= r.y + r.h; };
 
