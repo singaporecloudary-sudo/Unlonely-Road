@@ -3593,3 +3593,5 @@ CraftingScene.prototype._homeUIReady = function(key) {
   var img = this._homeUI && this._homeUI[key];
   return img && img.complete && img.naturalWidth > 0;
 };
+
+/* force-recommit: fix truncated git blob */
