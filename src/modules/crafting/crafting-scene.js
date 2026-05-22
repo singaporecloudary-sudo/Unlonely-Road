@@ -1927,7 +1927,7 @@ CraftingScene.prototype._renderVictoryCoinParticles = function(ctx) {
       // 飞到终点：触发加金币余额视觉反馈并播放清脆叮音（节流防音爆）
       this._coinScoreScale = 1.35;
       if (!this._lastCoinSoundTime || Date.now() - this._lastCoinSoundTime > 60) {
-        if (window.AudioManager) window.AudioManager.play('click');
+        if (window.AudioManager && window.AudioManager.click) window.AudioManager.click();
         this._lastCoinSoundTime = Date.now();
       }
       this._victoryCoinParticles.splice(i, 1);
