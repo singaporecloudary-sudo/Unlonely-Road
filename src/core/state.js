@@ -72,6 +72,12 @@ class GameState {
     if (this._listeners['*']) {
       this._listeners['*'].forEach(cb => cb(key, oldValue, newValue));
     }
+    // 自动存盘（每次 slots/coins/gems 等重要数据修改时触发存盘，排除时间高频key）
+    if (['slots', 'coins', 'gems', 'currentStage', 'highestStage', 'droneEquipped', 'buyCount', 'unlockedStage'].indexOf(key) !== -1) {
+      if (window.gameEngine && window.gameEngine.saveManager) {
+        window.gameEngine.saveManager.save(this.serialize());
+      }
+    }
   }
 
   // ========== 通用获取/设置 ==========

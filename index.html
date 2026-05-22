@@ -101,7 +101,8 @@
       border: none; border-radius: 50%;
       color: #FFF; font-size: 20px;
       cursor: pointer; z-index: 200;
-      display: flex; justify-content: center; align-items: center;
+      display: none; /* 默认隐藏！对外发布版不显示 */
+      justify-content: center; align-items: center;
     }
     #editor-toggle:hover { background: rgba(124,77,255,1); }
   </style>
@@ -219,10 +220,10 @@
 
       updateLoad(80);
 
-      // 加载存档（临时：清除旧存档以修复车辆丢失问题，后续可删除此行）
+      // 加载存档
       try {
-        localStorage.removeItem('merge_racer_shooter_save');
-        const savedData = null; // 强制使用新默认数据
+        const savedRaw = localStorage.getItem('merge_racer_shooter_save');
+        const savedData = savedRaw ? JSON.parse(savedRaw) : null;
         if (savedData) {
           gameState.deserialize(savedData);
           console.log('save loaded');
@@ -258,6 +259,10 @@
       engine.start();
 
       // ========== 编辑器按钮 ==========
+      const isEditorUrl = window.location.search.indexOf('editor=1') !== -1 || window.location.search.indexOf('admin=1') !== -1;
+      if (isEditorUrl) {
+        document.getElementById('editor-toggle').style.display = 'flex';
+      }
       document.getElementById('editor-toggle').addEventListener('click', () => {
         editor.toggle();
       });

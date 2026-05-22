@@ -54,6 +54,11 @@
         'background:rgba(0,200,255,0.85); border:none; border-radius:8px;' +
         'color:#FFF; font-size:13px; font-weight:bold; cursor:pointer;' +
         'z-index:200; box-shadow:0 0 12px rgba(0,200,255,0.6);';
+      // 只有在 URL 中带了 ?editor=1 或 ?admin=1 时，才显示调车按钮
+      var isEditorUrl = window.location.search.indexOf('editor=1') !== -1 || window.location.search.indexOf('admin=1') !== -1;
+      if (!isEditorUrl) {
+        btn.style.display = 'none';
+      }
       var self = this;
       btn.addEventListener('click', function() { self.toggle(); });
       document.body.appendChild(btn);

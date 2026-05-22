@@ -152,6 +152,16 @@ CraftingScene.prototype.onEnter = function() {
   if (window.AudioManager) {
     window.AudioManager.playBgm('calm');
   }
+
+  // 检查是否从战斗场景胜利返回
+  if (this.engine && this.engine.previousScene === 'battle') {
+    var battleScene = this.engine.scenes['battle'];
+    if (battleScene && battleScene.victory) {
+      // 触发金币向左上方余额飞入动画
+      this.triggerCoinsFlyIn(360, 640, 18);
+      battleScene.victory = false; // 清除，防重入
+    }
+  }
   // 加载关卡按钮切图（金色科技按钮）
   if (!this._stageBtnImg) {
     var img = new Image();
@@ -246,6 +256,11 @@ CraftingScene.prototype.update = function(dt) {
     this._buyAnimTimer -= dt;
     if (this._buyAnimTimer < 0) this._buyAnimTimer = 0;
   }
+  // 顶栏金币缩放衰减
+  if (this._coinScoreScale && this._coinScoreScale > 1) {
+    this._coinScoreScale -= dt * 1.5;
+    if (this._coinScoreScale < 1) this._coinScoreScale = 1;
+  }
   // 购车按钮点击闪光
   if (this._buyClickFlashTimer > 0) {
     this._buyClickFlashTimer -= dt;
@@ -325,6 +340,11 @@ CraftingScene.prototype.render = function(ctx) {
     this._renderBuyCoinParticles(ctx);
   }
 
+  // 10.6. 胜利返回金币飞入粒子
+  if (this._victoryCoinParticles && this._victoryCoinParticles.length > 0) {
+    this._renderVictoryCoinParticles(ctx);
+  }
+
   // 11. 浮动通知
   if (this.notification) {
     this._renderNotification(ctx);
@@ -402,7 +422,15 @@ CraftingScene.prototype._renderTopBar = function(ctx) {
   ctx.font = 'bold 17px Arial, sans-serif';
   ctx.textAlign = 'left';
   ctx.textBaseline = 'middle';
+  ctx.save();
+  var coinScale = this._coinScoreScale || 1;
+  if (coinScale > 1) {
+    ctx.translate(L.coinDisplay.x + 36, L.coinDisplay.y + L.coinDisplay.h / 2);
+    ctx.scale(coinScale, coinScale);
+    ctx.translate(-(L.coinDisplay.x + 36), -(L.coinDisplay.y + L.coinDisplay.h / 2));
+  }
   ctx.fillText(this._formatNumber(coins), L.coinDisplay.x + 36, L.coinDisplay.y + L.coinDisplay.h / 2);
+  ctx.restore();
 
   // 中间: CPS
   var cp = L.cpsDisplay;
@@ -990,8 +1018,22 @@ CraftingScene.prototype._renderActionButtons = function(ctx) {
   var stageNum = self.state.get('currentStage') || 1;
 
   // AUTO 合成 —— 蓝青色
-  this._drawSciActionBtn(ctx, L.autoCraftBtn, 'AUTO ' + (isOn ? '开' : '合成'),
-    { primary: '#00D4FF', dark: '#003D5C', glow: '#00E5FF', textColor: '#FFFFFF' });
+  var autoOpts = isOn ? {
+    primary: '#00E5FF',
+    dark: '#00557A',
+    glow: '#00FFFF',
+    textColor: '#FFFFFF',
+    isPrimary: true,
+    now: now
+  } : {
+    primary: '#0090B0',
+    dark: '#002235',
+    glow: '#00B0FF',
+    textColor: '#A0D5F0',
+    isPrimary: false,
+    now: now
+  };
+  this._drawSciActionBtn(ctx, L.autoCraftBtn, 'AUTO ' + (isOn ? '开' : '合成'), autoOpts);
 
   // 关卡 —— 金色切图按钮（保留呼吸动画）
   this._drawStageBtnFromImage(ctx, L.stageBtn, '关卡' + stageNum, now);
@@ -1107,11 +1149,23 @@ CraftingScene.prototype._drawSciActionBtn = function(ctx, btn, text, opts) {
 
   // 外发光边框
   drawPath();
-  ctx.shadowColor = opts.glow; ctx.shadowBlur = opts.isPrimary ? 18 : 10;
+  var blur = opts.isPrimary ? (15 + Math.sin((opts.now || Date.now()) * 0.015) * 7) : 10;
+  ctx.shadowColor = opts.glow; ctx.shadowBlur = blur;
   ctx.strokeStyle = opts.primary;
   ctx.lineWidth = opts.isPrimary ? 2.5 : 1.8;
   ctx.stroke();
   ctx.shadowBlur = 0;
+
+  // 赛博横向高光扫描线
+  if (opts.isPrimary) {
+    var scanY = y + (Math.sin((opts.now || Date.now()) * 0.004) * 0.5 + 0.5) * h;
+    ctx.save();
+    drawPath();
+    ctx.clip();
+    ctx.fillStyle = 'rgba(255,255,255,0.35)';
+    ctx.fillRect(x, scanY - 1.5, w, 3);
+    ctx.restore();
+  }
 
   // 内层细边
   ctx.strokeStyle = 'rgba(255,255,255,' + (opts.isPrimary ? 0.4 : 0.15) + ')';
@@ -1749,7 +1803,80 @@ CraftingScene.prototype._renderBuyCoinParticles = function(ctx) {
   ctx.restore();
 };
 
-CraftingScene.prototype._handleButtonClick = function(pos) {
+/** 触发胜利返回金币飞入动画 */
+CraftingScene.prototype.triggerCoinsFlyIn = function(startX, startY, count) {
+  if (!this._victoryCoinParticles) this._victoryCoinParticles = [];
+  var n = count || 15;
+  var targetX = 33;  // 金币余额图标终点 X
+  var targetY = 23;  // 金币余额图标终点 Y
+  for (var i = 0; i < n; i++) {
+    this._victoryCoinParticles.push({
+      x: startX + (Math.random() - 0.5) * 50,
+      y: startY + (Math.random() - 0.5) * 50,
+      tx: targetX,
+      ty: targetY,
+      delay: i * 0.05, // 有层次地分批起飞
+      age: 0,
+      life: 0.72 + Math.random() * 0.15,
+      r: 8 + Math.random() * 3,
+    });
+  }
+};
+
+/** 渲染并更新胜利返回的金币飞入粒子（从屏幕中央抛物线飞向左上角余额） */
+CraftingScene.prototype._renderVictoryCoinParticles = function(ctx) {
+  if (!this._victoryCoinParticles || this._victoryCoinParticles.length === 0) return;
+  var dt = this.engine ? this.engine.deltaTime : 0.016;
+  ctx.save();
+  for (var i = this._victoryCoinParticles.length - 1; i >= 0; i--) {
+    var par = this._victoryCoinParticles[i];
+    if (par.delay > 0) {
+      par.delay -= dt;
+      continue;
+    }
+    par.age += dt;
+    var t = Math.min(1, par.age / par.life);
+    if (t >= 1) {
+      // 飞到终点：触发加金币余额视觉反馈并播放清脆叮音（节流防音爆）
+      this._coinScoreScale = 1.35;
+      if (!this._lastCoinSoundTime || Date.now() - this._lastCoinSoundTime > 60) {
+        if (window.AudioManager) window.AudioManager.play('click');
+        this._lastCoinSoundTime = Date.now();
+      }
+      this._victoryCoinParticles.splice(i, 1);
+      continue;
+    }
+
+    // 飞行动画：向左上方抛出曲线
+    var ease = t * t; // 加速飞入
+    var cx = par.x + (par.tx - par.x) * ease;
+    // 抛物线：向上拱起一部分
+    var cy = par.y + (par.ty - par.y) * ease - Math.sin(t * Math.PI) * 90;
+    var alpha = 1 - t * 0.2;
+    var r = par.r * (1 - t * 0.4);
+
+    // 绘制硬币（带耀眼金色渐变和外发光）
+    ctx.shadowColor = '#FFD54F';
+    ctx.shadowBlur = 12;
+    var grad = ctx.createRadialGradient(cx - r * 0.3, cy - r * 0.3, 1, cx, cy, r);
+    grad.addColorStop(0, 'rgba(255,250,220,' + alpha + ')');
+    grad.addColorStop(0.5, 'rgba(255,193,7,' + alpha + ')');
+    grad.addColorStop(1, 'rgba(255,143,0,' + alpha + ')');
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 硬币中央绘制 '$' 符号
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = 'rgba(140,80,0,' + alpha + ')';
+    ctx.font = 'bold ' + Math.floor(r * 1.35) + 'px Arial';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('$', cx, cy + 1);
+  }
+  ctx.restore();
+};
   var L = this.layout;
   var inRect = function(r) { return pos.x >= r.x && pos.x <= r.x + r.w && pos.y >= r.y && pos.y <= r.y + r.h; };
 
@@ -3340,37 +3467,46 @@ CraftingScene.prototype._loadHomeUI = function() {
   if (this._homeUILoaded || this._homeUILoading) return;
   this._homeUILoading = true;
   var manifest = {
-    topBar:        'assets/ui/home_v2/01_top_bar_full.png?v=1',
-    perfPanel:     'assets/ui/home_v2/02_panel_performance.png?v=1',
-    lvLabel:       'assets/ui/home_v2/03_label_lv4.png?v=1',
-    corePanel:     'assets/ui/home_v2/04_panel_energy_core.png?v=1',
-    glowRing:      'assets/ui/home_v2/06_glow_ring.png?v=1',
-    btnAuto:       'assets/ui/home_v2/07_btn_auto_merge.png?v=1',
-    btnStage:      'assets/ui/home_v2/08_btn_level2.png?v=1',
-    btnRace:       'assets/ui/home_v2/09_btn_race_mode.png?v=1',
-    slotCar:       'assets/ui/home_v2/10_slot_car_white.png?v=1',
-    slotEmpty:     'assets/ui/home_v2/11_slot_empty_1.png?v=1',
-    bottomNav:     'assets/ui/home_v2/33_bottom_nav_full.png?v=1',
-    btnDrone:      'assets/ui/home_v2/34_btn_drone.png?v=1',
-    btnCarLv:      'assets/ui/home_v2/35_btn_car_lv1.png?v=1',
-    btnShop:       'assets/ui/home_v2/36_btn_shop.png?v=1',
+    topBar:        'assets/ui/home_v2/01_top_bar_full.png',
+    perfPanel:     'assets/ui/home_v2/02_panel_performance.png',
+    lvLabel:       'assets/ui/home_v2/03_label_lv4.png',
+    corePanel:     'assets/ui/home_v2/04_panel_energy_core.png',
+    glowRing:      'assets/ui/home_v2/06_glow_ring.png',
+    btnAuto:       'assets/ui/home_v2/07_btn_auto_merge.png',
+    btnStage:      'assets/ui/home_v2/08_btn_level2.png',
+    btnRace:       'assets/ui/home_v2/09_btn_race_mode.png',
+    slotCar:       'assets/ui/home_v2/10_slot_car_white.png',
+    slotEmpty:     'assets/ui/home_v2/11_slot_empty_1.png',
+    bottomNav:     'assets/ui/home_v2/33_bottom_nav_full.png',
+    btnDrone:      'assets/ui/home_v2/34_btn_drone.png',
+    btnCarLv:      'assets/ui/home_v2/35_btn_car_lv1.png',
+    btnShop:       'assets/ui/home_v2/36_btn_shop.png',
   };
   this._homeUI = {};
   var self = this;
   var total = Object.keys(manifest).length;
   var loaded = 0;
   Object.keys(manifest).forEach(function(key) {
-    var img = new Image();
-    img.onload = function() {
+    var rawPath = manifest[key];
+    // 优先尝试从全局预加载缓存中获取
+    var preloadImg = window.AssetConfig && window.AssetConfig._loadedImages && window.AssetConfig._loadedImages[rawPath];
+    if (preloadImg && (preloadImg.complete || preloadImg.naturalWidth > 0)) {
+      self._homeUI[key] = preloadImg;
       loaded++;
       if (loaded >= total) self._homeUILoaded = true;
-    };
-    img.onerror = function() {
-      loaded++;
-      if (loaded >= total) self._homeUILoaded = true;
-    };
-    img.src = manifest[key];
-    self._homeUI[key] = img;
+    } else {
+      var img = new Image();
+      img.onload = function() {
+        loaded++;
+        if (loaded >= total) self._homeUILoaded = true;
+      };
+      img.onerror = function() {
+        loaded++;
+        if (loaded >= total) self._homeUILoaded = true;
+      };
+      img.src = rawPath + '?v=' + (window.AssetConfig ? window.AssetConfig._cacheBust : '1');
+      self._homeUI[key] = img;
+    }
   });
 };
 

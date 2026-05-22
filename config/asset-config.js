@@ -508,6 +508,29 @@ const AssetConfig = {
       }
     }
 
+    // 首页 home_v2 UI 素材
+    var homeV2 = [
+      'assets/ui/home_v2/01_top_bar_full.png',
+      'assets/ui/home_v2/02_panel_performance.png',
+      'assets/ui/home_v2/03_label_lv4.png',
+      'assets/ui/home_v2/04_panel_energy_core.png',
+      'assets/ui/home_v2/06_glow_ring.png',
+      'assets/ui/home_v2/07_btn_auto_merge.png',
+      'assets/ui/home_v2/08_btn_level2.png',
+      'assets/ui/home_v2/09_btn_race_mode.png',
+      'assets/ui/home_v2/10_slot_car_white.png',
+      'assets/ui/home_v2/11_slot_empty_1.png',
+      'assets/ui/home_v2/33_bottom_nav_full.png',
+      'assets/ui/home_v2/34_btn_drone.png',
+      'assets/ui/home_v2/35_btn_car_lv1.png',
+      'assets/ui/home_v2/36_btn_shop.png',
+      'assets/ui/home_v2/btn_stage_gold.png',
+      'assets/ui/home_v2/particle_ring_v2.png'
+    ];
+    for (var hi = 0; hi < homeV2.length; hi++) {
+      addTask(homeV2[hi]);
+    }
+
     if (total === 0) {
       if (onProgress) onProgress(1);
       return;
