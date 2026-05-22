@@ -4148,6 +4148,13 @@ class BattleScene {
         this.state.addCoins(rewards.coins);
         this.state.addGems(rewards.gems);
         this.state.advanceStage();
+
+        // 标记：胜利返回，触发大量金币飞入动画！
+        const craftingScene = this.engine.scenes['crafting'];
+        if (craftingScene) {
+          craftingScene._pendingVictoryCoins = true;
+        }
+
         this.engine.switchScene('crafting');
       }
       return;

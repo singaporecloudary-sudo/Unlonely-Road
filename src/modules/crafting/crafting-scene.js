@@ -153,15 +153,12 @@ CraftingScene.prototype.onEnter = function() {
     window.AudioManager.playBgm('calm');
   }
 
-  // 检查是否从战斗场景胜利返回
-  if (this.engine && this.engine.previousScene === 'battle') {
-    var battleScene = this.engine.scenes['battle'];
-    if (battleScene && battleScene.victory) {
-      // 触发金币向左上方余额飞入动画
-      this.triggerCoinsFlyIn(360, 640, 18);
-      battleScene.victory = false; // 清除，防重入
-    }
+  // 检查是否从战斗场景胜利返回并设置了延迟飞入金币动画
+  if (this._pendingVictoryCoins) {
+    this.triggerCoinsFlyIn(360, 640, 24); // 飞入 24 颗，代表通关大量金币
+    this._pendingVictoryCoins = false;
   }
+
   // 加载关卡按钮切图（金色科技按钮）
   if (!this._stageBtnImg) {
     var img = new Image();
@@ -174,10 +171,15 @@ CraftingScene.prototype.onEnter = function() {
     ringImg.src = 'assets/ui/home_v2/particle_ring_v2.png?v=1';
     this._particleRingImg = ringImg;
   }
+
+  // 挂机/离线收益结算：如果是从战斗场景返回，只悄悄 claim 收益，不弹出提示
+  var fromBattle = (this.engine && this.engine.previousScene === 'battle');
   var idleCoins = self.state.calculateIdleCoins();
   if (idleCoins > 0) {
     self.state.claimIdleCoins();
-    self.showNotification('挂机收益: +' + self._formatNumber(idleCoins) + ' 金币');
+    if (!fromBattle) {
+      self.showNotification('挂机收益: +' + self._formatNumber(idleCoins) + ' 金币');
+    }
   }
   self.idleTimer = setInterval(function() {
     var cps = self.state.getCoinsPerSecond();
