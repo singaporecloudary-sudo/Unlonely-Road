@@ -361,6 +361,17 @@ const AssetConfig = {
     } catch(e) {
       console.error('[AssetConfig] _getCustomOrLoaded error:', e);
     }
+    // 3. localStorage 没数据 → 兜底主动发起 HTTP 加载（按需懒加载）
+    if (!cached) {
+      var lazyImg = new Image();
+      var selfLazy = this;
+      var lazyPath = path;
+      lazyImg.onload = function() { selfLazy._loadedImages[lazyPath] = lazyImg; };
+      lazyImg.onerror = function() { /* 文件不存在，留空 */ };
+      lazyImg.src = path + '?v=' + this._cacheBust;
+      this._loadedImages[path] = lazyImg;
+      return null;
+    }
     return cached || null;
   },
 
@@ -430,6 +441,13 @@ const AssetConfig = {
     for (var lv = 1; lv <= 52; lv++) {
       var filename = this.vehicles.player.naming.replace("{level}", lv);
       addTask(this.vehicles.player.path + filename);
+    }
+
+    // 1-52级战斗场景战车（独立资源，路径 assets/vehicles/battle/battle_car_lv{N}.png）
+    if (this.battleCars && this.battleCars.battlePath) {
+      for (var blv = 1; blv <= 52; blv++) {
+        addTask(this.battleCars.battlePath.replace('{level}', blv));
+      }
     }
 
     // 敌方车辆
