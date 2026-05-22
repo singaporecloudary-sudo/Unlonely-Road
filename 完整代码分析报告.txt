@@ -1,0 +1,172 @@
+﻿===============================================================================
+合成飞车射击项目 - "dd" 后缀数字显示问题 完整代码分析报告
+===============================================================================
+
+## 问题描述
+用户在UI上看到 "118.6dd"、"39.8dd" 这样的数字显示，说明有某个格式化函数在输出 "dd" 后缀。
+
+## 搜索结果总结
+
+### 1. 找到的唯一formatNumber定义位置 ✓
+
+文件: F:\游戏制作\合成飞车射击\src\modules\crafting\crafting-scene.js
+行数: 622-630
+
+代码内容:
+---
+CraftingScene.prototype._formatNumber = function(n) {
+  if (!n) n = 0;
+  n = Math.floor(n);
+  if (n >= 1e9) return (n / 1e9).toFixed(1) + 'B';
+  if (n >= 1e6) return (n / 1e6).toFixed(1) + 'M';
+  if (n >= 1e3) return (n / 1e3).toFixed(1) + 'K';
+  // 小于1000的整数直接返回，不要任何后缀
+  return String(n);
+};
+---
+
+### 2. _formatNumber 的所有使用位置
+
+在 crafting-scene.js 中共有 5 处调用:
+
+1. 行 97: 
+   self.showNotification('挂机收益: +' + self._formatNumber(idleCoins) + ' 金币');
+
+2. 行 197:
+   ctx.fillText(this._formatNumber(cps) + '/S', L.cpsBig.x + L.cpsBig.w / 2, L.cpsBig.y + 28);
+
+3. 行 207:
+   ctx.fillText(this._formatNumber(gems), L.gemsDisplay.x + 34, L.gemsDisplay.y + 25);
+
+4. 行 217:
+   ctx.fillText(this._formatNumber(coins), L.coinsDisplay.x + 34, L.coinsDisplay.y + 25);
+
+5. 行 415:
+   ctx.fillText(this._formatNumber(price), L.buyBtn.x + L.buyBtn.w / 2, L.buyCmd.y + L.buyBtn.h + 20);
+
+6. 行 567:
+   this.showNotification('购买成功! 花费 ' + this._formatNumber(result.price) + ' 金币');
+
+### 3. "dd" 字符串搜索结果
+
+全项目搜索结果:
+- asset-config.js: 出现在注释和代码中的 "addTask"、"addCoins"、"addGems" 等词汇（不相关）
+- engine.js: 出现在 "addEventListener" 等词汇中（不相关）
+- state.js: 出现在 "addCoins"、"addGems" 等词汇中（不相关）
+- crafting-scene.js: 出现在 "addCoins"、"textBaseline" 等词汇中（不相关）
+- battle-scene.js: 出现在 "_addEffect"、"_addFloatingText" 等词汇中（不相关）
+
+结论: 项目中NOT存在任何硬编码的 'dd' 字符串后缀!
+
+### 4. 其他可能的formatNumber定义位置检查
+
+检查的文件:
+- F:\游戏制作\合成飞车射击\src\core\engine.js ✓ 无 formatNumber
+- F:\游戏制作\合成飞车射击\src\core\state.js ✓ 无 formatNumber
+- F:\游戏制作\合成飞车射击\src\modules\battle\battle-scene.js ✓ 无 formatNumber
+- F:\游戏制作\合成飞车射击\config\asset-config.js ✓ 无 formatNumber
+- F:\游戏制作\合成飞车射击\config\game-config.js ✓ 无 formatNumber
+- F:\游戏制作\合成飞车射击\index.html ✓ 无 formatNumber
+- F:\游戏制作\合成飞车射击\src\editor\component-editor.js ✓ 无 formatNumber
+
+### 5. asset-config.js 的 renderButton 方法分析
+
+文件位置: F:\游戏制作\合成飞车射击\config\asset-config.js
+关键方法: 行 493-503
+
+代码:
+---
+renderButton: function(ctx, btnKey, x, y, w, h) {
+  var cfg = this.ui.buttons.items[btnKey];
+  if (!cfg) return false;
+  var path = this.ui.buttons.path + cfg.file;
+  var img = this._getCustomOrLoaded(path);
+  if (img && (img.complete || img.naturalWidth > 0)) {
+    this._drawImageFit(ctx, img, x, y, w, h);
+    return true;
+  }
+  return false;
+},
+---
+
+结论: renderButton 方法仅绘制按钮图片，不在按钮上画文字。
+文字是在 crafting-scene.js 中通过 ctx.fillText() 单独绘制的。
+
+### 6. 构建/打包流程检查
+
+index.html 加载配置:
+---
+<script src="config/game-config.js?v=3"></script>
+<script src="config/asset-config.js?v=3"></script>
+<script src="src/core/engine.js?v=3"></script>
+<script src="src/core/state.js?v=3"></script>
+<script src="src/modules/crafting/crafting-scene.js?v=3"></script>
+<script src="src/modules/battle/battle-scene.js?v=3"></script>
+<script src="src/editor/component-editor.js?v=3"></script>
+---
+
+结论: 
+- 直接加载原始 .js 文件，无webpack/rollup/browserify等打包流程
+- 使用 ?v=3 缓存版本号
+- NO 构建流程会修改代码
+
+## 根本原因分析
+
+观察 _formatNumber 函数的实现，问题症状为:
+- UI显示 "118.6dd" 而不是预期的格式 (如 "118.6K"、"118.6M" 或 "118")
+
+可能的原因:
+
+### 假设 1: 客户端浏览器缓存陈旧的 crafting-scene.js 版本
+- 旧版本的 _formatNumber 可能包含 'dd' 后缀代码
+- 解决: Ctrl+F5 强制刷新浏览器缓存
+
+### 假设 2: 服务器上存在旧的 crafting-scene.js 文件
+- 服务器返回的是包含 'dd' 后缀的旧版本文件
+- 解决: 确保服务器部署的是最新版本代码
+
+### 假设 3: 缓存版本号 ?v=3 未被及时更新
+- 当修改 crafting-scene.js 后，?v=3 版本号未变
+- 用户的浏览器仍然加载旧的缓存版本
+- 解决: 修改HTML中的版本号为 ?v=4 或更高
+
+### 假设 4: 其他地方有全局的 formatNumber 方法覆盖了 _formatNumber
+- 全局的 window.formatNumber 可能在加载后被修改
+- 解决: 检查 localStorage、console错误、其他脚本注入
+
+## 最终建议
+
+1. 清空浏览器缓存并硬刷新 (Ctrl+Shift+Delete + Ctrl+F5)
+
+2. 更新 index.html 中的版本号:
+   从 ?v=3 改为 ?v=4:
+   
+   <script src="config/game-config.js?v=4"></script>
+   <script src="config/asset-config.js?v=4"></script>
+   <script src="src/core/engine.js?v=4"></script>
+   <script src="src/core/state.js?v=4"></script>
+   <script src="src/modules/crafting/crafting-scene.js?v=4"></script>
+   <script src="src/modules/battle/battle-scene.js?v=4"></script>
+   <script src="src/editor/component-editor.js?v=4"></script>
+
+3. 在浏览器开发者工具 (F12) Network 标签中检查:
+   - crafting-scene.js 是否从网络加载(200)或缓存(304)
+   - 确保 Size 列显示的是最新文件大小
+
+4. 在浏览器控制台执行以验证当前版本:
+   console.log(CraftingScene.prototype._formatNumber.toString());
+   
+   应该显示:
+   "function(n) {
+     if (!n) n = 0;
+     n = Math.floor(n);
+     if (n >= 1e9) return (n / 1e9).toFixed(1) + 'B';
+     if (n >= 1e6) return (n / 1e6).toFixed(1) + 'M';
+     if (n >= 1e3) return (n / 1e3).toFixed(1) + 'K';
+     return String(n);
+   }"
+
+5. 如果问题仍存在，检查是否有浏览器插件或用户脚本修改了 formatNumber
+
+===============================================================================
+EOF

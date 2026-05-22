@@ -1,0 +1,150 @@
+﻿========== 加载优先级逻辑 (最关键) ==========
+文件: config/asset-config.js 行号: 269-311
+
+_getCustomOrLoaded: function(path) {
+  var cached = this._loadedImages[path];
+  if (cached && (cached.complete || cached.naturalWidth > 0)) {
+    return cached;
+  }
+  try {
+    var pathToKey = {
+      'assets/scenes/main_bg/main_bg.png': 'main_bg',
+      'assets/ui/buttons/btn_auto_craft.png': 'btn_auto_craft',
+      'assets/ui/buttons/btn_stage.png': 'btn_stage',
+      'assets/ui/buttons/btn_race.png': 'btn_race',
+      'assets/ui/buttons/btn_buy_car.png': 'btn_buy_car',
+      'assets/ui/buttons/btn_shop.png': 'btn_shop',
+      'assets/ui/buttons/btn_settings.png': 'btn_settings',
+      'assets/ui/buttons/btn_vip.png': 'btn_vip',
+      'assets/ui/icons/icon_coin.png': 'icon_coin',
+      'assets/ui/icons/icon_gem.png': 'icon_gem',
+      'assets/ui/icons/icon_fire.png': 'icon_fire',
+      'assets/ui/bars/bar_progress.png': 'bar_progress',
+    };
+    var ak = pathToKey[path];
+    if (ak) {
+      var data = localStorage.getItem('merge_racer_asset_' + ak);
+      if (data) {
+        var img = new Image();
+        img.src = data;
+        this._loadedImages[path] = img;
+        return img;
+      }
+    }
+  } catch(e) {}
+  return cached || null;
+}
+
+========== 所有按钮坐标定义 ==========
+文件: src/modules/crafting/crafting-scene.js 行号: 34-56
+
+settingsBtn:  { x: 22,  y: 108, w: 55,  h: 55 }
+vipBtn:       { x: 22,  y: 172, w: 55,  h: 55 }
+autoCraftBtn: { x: 48,  y: 508, w: 175, h: 52 }
+stageBtn:     { x: 268, y: 508, w: 185, h: 52 }
+raceBtn:      { x: 498, y: 508, w: 175, h: 52 }
+droneBtn:     { x: 35,  y: 1120, w: 165, h: 56 }
+buyBtn:       { x: 228, y: 1120, w: 264, h: 56 }
+shopBtn:      { x: 520, y: 1120, w: 165, h: 56 }
+
+========== settingsBtn 和 vipBtn 渲染 ==========
+文件: src/modules/crafting/crafting-scene.js 行号: 372-403
+
+Settings按钮:
+- Canvas绘制: rgba(69,90,104,0.85) 背景
+- 圆形占位符: color #78909C, label '⚙'
+- 文字: 'Settings' 11px Arial
+
+VIP按钮:
+- Canvas绘制: rgba(183,28,28,0.82) 背景
+- 圆形占位符: color #FFD54F, label '👑'
+- 文字: 'VIP' 11px Arial
+
+========== autoCraftBtn, stageBtn, raceBtn 渲染 ==========
+文件: src/modules/crafting/crafting-scene.js 行号: 313-357
+
+autoCraftBtn: 
+- 颜色: 开启时rgba(0,200,100,0.85), 关闭时rgba(55,71,79,0.9)
+- 圆形占位符: color #90A4AE
+- 文字: 'Auto-craft' 13px Arial
+
+stageBtn (主按钮):
+- 颜色: rgba(230,120,20,0.88) 背景, #FFD54F 边框
+- 文字: 'STAGE' 24px粗体Arial
+- 附加文字: 'Stage N' 12px Arial
+
+raceBtn:
+- 颜色: rgba(156,39,176,0.82) 背景, #CE93D8 边框
+- 圆形占位符: color #CE93D8
+- 文字: 'Race' 16px Arial
+
+========== droneBtn, buyBtn, shopBtn 渲染 ==========
+文件: src/modules/crafting/crafting-scene.js 行号: 419-465
+
+droneBtn:
+- 颜色: rgba(0,105,92,0.85) 背景, #4DB6AC 边框
+- 圆形占位符: color #80CBC4, label '🛡'
+- 文字: 'Drone' 14px Arial
+
+buyBtn (购买按钮):
+- 颜色: rgba(33,150,243,0.85) 背景, #90CAF9 边框
+- 圆形占位符: color #FFD54F
+- 文字: 购买价格数字 17px Arial粗体
+
+shopBtn:
+- 颜色: rgba(198,40,40,0.85) 背景, #EF9A9A 边框
+- 圆形占位符: color #EF9A9A, label '🏪'
+- 文字: 'Shop' 15px Arial
+
+========== 图标配置 (asset-config.js) ==========
+
+icon_coin:
+- 文件: icon_coin.png
+- 尺寸: 40x40
+- 占位符: 圆形, 颜色#FFC107
+- localStorage key: merge_racer_asset_icon_coin
+- 配置行: 115
+
+icon_gem:
+- 文件: icon_gem.png
+- 尺寸: 40x40
+- 占位符: 圆形, 颜色#FFC107
+- localStorage key: merge_racer_asset_icon_gem
+- 配置行: 116
+
+icon_fire:
+- 文件: icon_fire.png
+- 尺寸: 40x40
+- 占位符: 圆形, 颜色#FFC107
+- 配置行: 119
+
+========== 进度条 ==========
+
+progressBar:
+- 配置文件: assets/ui/bars/bar_progress.png
+- 尺寸: 400x20
+- 渲染位置: {x: 130, y: 408, w: 460, h: 32}
+- 渲染方法: _renderProgressBar() 行234-256
+- Canvas背景: rgba(0,0,0,0.4)
+- Canvas填充: #FFB300 (金色)
+- localStorage key: merge_racer_asset_bar_progress
+
+========== 占位符类型支持 (asset-config.js 502-623) ==========
+
+- colored_rect: 纯色矩形(用于车辆), 支持多色渐变和标签显示
+- rounded_rect: 圆角矩形(用于按钮), 颜色#37474F
+- circle: 圆形(用于图标), 颜色可配置
+- bar: 进度条(用于血条/经验), 背景色+前景色+边框
+- gradient: 渐变背景, 垂直线性渐变
+- track: 赛道背景, 草地+路面+车道线
+- bullet: 炮弹效果, 椭圆形
+- particle: 粒子效果, 多个圆形粒子
+
+========== 文件列表 ==========
+
+关键文件:
+F:\游戏制作\合成飞车射击\config\asset-config.js (634行)
+F:\游戏制作\合成飞车射击\src\modules\crafting\crafting-scene.js (680行)
+F:\游戏制作\合成飞车射击\src\core\engine.js (271行)
+F:\游戏制作\合成飞车射击\src\core\state.js (200+行)
+F:\游戏制作\合成飞车射击\config\game-config.js (207行)

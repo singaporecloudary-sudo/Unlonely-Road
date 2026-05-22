@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>战车素材尺寸统一工具</title>
+  <style>
+    body { background: #1a1a2e; color: #e0e0e0; font-family: Arial, sans-serif; padding: 20px; max-width: 700px; margin: 0 auto; }
+    h1 { color: #7c4dff; font-size: 20px; margin-bottom: 10px; }
+    h2 { color: #ffd700; font-size: 16px; margin-top: 20px; }
+    .info { color: #8892b0; font-size: 13px; margin-bottom: 15px; line-height: 1.6; }
+    .warn-box { background: #3d1f1f; border: 1px solid #ff5252; border-radius: 8px; padding: 12px 16px; margin: 15px 0; font-size: 13px; }
+    .warn-box strong { color: #ff5252; }
+    .row { display: flex; align-items: center; gap: 12px; margin: 8px 0; padding: 8px 12px; background: #16213e; border-radius: 6px; }
+    .row img { border: 1px solid #30363d; background: #0d1117; border-radius: 4px; }
+    .label { min-width: 80px; font-weight: bold; color: #fff; }
+    .size { color: #4caf50; font-size: 13px; font-family: monospace; }
+    .size.wrong { color: #ff5252; }
+    .status { font-size: 13px; margin-left: auto; }
+    .btn { padding: 10px 22px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 14px; transition: all 0.2s; }
+    .btn:hover:not(:disabled) { transform: translateY(-1px); opacity: 0.9; }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+    .btn-check { background: #2196f3; color: #fff; }
+    .btn-resize { background: #7c4dff; color: #fff; }
+    .btn-force { background: #ff9800; color: #fff; }
+    .btn-force:hover:not(:disabled) { background: #f57c00; }
+    .btn-group { display: flex; gap: 10px; flex-wrap: wrap; margin: 15px 0; }
+    #results { margin-top: 15px; }
+    #log { background: #0d1117; padding: 12px; border-radius: 6px; font-family: monospace; font-size: 12px; margin-top: 15px; max-height: 300px; overflow-y: auto; white-space: pre-wrap; color: #aab; }
+    .summary { display: flex; gap: 20px; margin: 15px 0; padding: 12px; background: #16213e; border-radius: 8px; }
+    .summary-item { text-align: center; }
+    .summary-num { font-size: 28px; font-weight: bold; }
+    .summary-num.ok { color: #4caf50; }
+    .summary-num.bad { color: #ff5252; }
+    .summary-num.total { color: #7c4dff; }
+    .summary-label { font-size: 12px; color: #8892b0; margin-top: 2px; }
+  </style>
+</head>
+<body>
+  <h1>🔧 战车素材尺寸统一工具</h1>
+  <p class="info">
+    标准尺寸：<strong style="color:#4caf50">160 × 240 px</strong>（2×渲染尺寸 80×120）<br>
+    检测 localStorage 中所有已上传的战车自定义素材（key: merge_racer_asset_battle_car_lvN）
+  </p>
+
+  <div class="btn-group">
+    <button class="btn btn-check" onclick="checkAll()">🔍 检查所有素材</button>
+    <button class="btn btn-resize" id="btnResize" onclick="resizeWrong()" disabled>📐 仅缩放异常的</button>
+    <button class="btn btn-force" id="btnForce" onclick="forceResizeAll()" disabled>♻️ 强制全部重新缩放</button>
+  </div>
+
+  <div id="summary" class="summary" style="display:none">
+    <div class="summary-item"><div class="summary-num total" id="numTotal">0</div><div class="summary-label">已上传总数</div></div>
+    <div class="summary-item"><div class="summary-num ok" id="numOk">0</div><div class="summary-label">尺寸正确 ✅</div></div>
+    <div class="summary-item"><div class="summary-num bad" id="numBad">0</div><div class="summary-label">需缩放 ⚠️</div></div>
+  </div>
+
+  <div class="warn-box" id="warnBox" style="display:none">
+    <strong>⚠️ 注意：</strong>强制全部重新缩放会重新处理<strong>所有</strong>已上传素材（包括尺寸正确的），
+    如果原始图片分辨率高于 160×240，画质会有损失。建议仅在素材显示异常时使用。
+  </div>
+
+  <div id="results"></div>
+  <div id="log"></div>
+
+  <script>
+    var TARGET_W = 160, TARGET_H = 240;
+    var allFound = [];     // 所有找到的 {lv, data, w, h}
+    var needResize = [];   // 需要缩放的 lv 列表
+    var okCount = 0;
+
+    function log(msg) {
+      var el = document.getElementById('log');
+      el.textContent += msg + '\n';
+      el.scrollTop = el.scrollHeight;
+    }
+
+    function clearLog() {
+      document.getElementById('log').textContent = '';
+    }
+
+    function checkAll() {
+      var results = document.getElementById('results');
+      results.innerHTML = '';
+      allFound = [];
+      needResize = [];
+      okCount = 0;
+      clearLog();
+      log('=== 检测战车素材尺寸 ===');
+      log('目标尺寸: ' + TARGET_W + ' × ' + TARGET_H);
+      log('');
+
+      var found = 0;
+      var pending = 0;
+
+      for (var lv = 1; lv <= 52; lv++) {
+        var key = 'merge_racer_asset_battle_car_lv' + lv;
+        var data = null;
+        try { data = localStorage.getItem(key); } catch(e) {}
+        if (!data) continue;
+
+        found++;
+        pending++;
+
+        (function(lvNum, base64Data) {
+          var img = new Image();
+          img.onload = function() {
+            var w = img.naturalWidth, h = img.naturalHeight;
+            var isCorrect = (w === TARGET_W && h === TARGET_H);
+            if (!isCorrect) needResize.push(lvNum); else okCount++;
+
+            allFound.push({lv: lvNum, data: base64Data, w: w, h: h});
+
+            var row = document.createElement('div');
+            row.className = 'row';
+            row.id = 'row_lv' + lvNum;
+            row.innerHTML =
+              '<span class="label">LV.' + String(lvNum).padStart(2,'0') + '</span>' +
+              '<img src="' + base64Data + '" width="40" height="60" title="' + w + '×' + h + '">' +
+              '<span class="size ' + (isCorrect ? '' : 'wrong') + '">' + w + ' × ' + h + '</span>' +
+              '<span class="status">' + (isCorrect ? '✅ 正确' : '⚠️ → ' + TARGET_W + '×' + TARGET_H) + '</span>';
+            results.appendChild(row);
+
+            log('LV.' + String(lvNum).padStart(2,'0') + ': ' + w + '×' + h + (isCorrect ? ' OK' : ' NEEDS RESIZE'));
+
+            pending--;
+            if (pending === 0) finishCheck(found);
+          };
+          img.onerror = function() {
+            pending--;
+            log('LV.' + String(lvNum).padStart(2,'0') + ': 图片加载失败');
+            if (pending === 0) finishCheck(found);
+          };
+          img.src = base64Data;
+        })(lv, data);
+      }
+
+      if (found === 0) {
+        log('未找到任何自定义战车素材');
+        results.innerHTML = '<p style="color:#ff5252;padding:20px;text-align:center">未在 localStorage 中找到任何自定义战车素材<br><small style="color:#8892b0">请先在游戏编辑器中上传战车素材</small></p>';
+      }
+    }
+
+    function finishCheck(totalFound) {
+      document.getElementById('summary').style.display = 'flex';
+      document.getElementById('numTotal').textContent = totalFound;
+      document.getElementById('numOk').textContent = okCount;
+      document.getElementById('numBad').textContent = needResize.length;
+
+      document.getElementById('btnResize').disabled = (needResize.length === 0);
+      document.getElementById('btnForce').disabled = (totalFound === 0);
+      document.getElementById('warnBox').style.display = (totalFound > 0) ? 'block' : 'none';
+
+      log('');
+      log('--- 统计 ---');
+      log('总计: ' + totalFound + ' | 正确: ' + okCount + ' | 需缩放: ' + needResize.length);
+      if (needResize.length > 0) log('异常: LV.' + needResize.join(', LV.'));
+      else if (totalFound > 0) log('所有素材尺寸正确！');
+    }
+
+    function doResize(lvList, label) {
+      if (lvList.length === 0) return;
+      log('');
+      log('=== ' + label + ' ===');
+
+      var done = 0;
+      var total = lvList.length;
+
+      lvList.forEach(function(lvNum) {
+        var key = 'merge_racer_asset_battle_car_lv' + lvNum;
+        var origData = null;
+        try { origData = localStorage.getItem(key); } catch(e) {}
+        if (!origData) { done++; return; }
+
+        var img = new Image();
+        img.onload = function() {
+          var canvas = document.createElement('canvas');
+          canvas.width = TARGET_W;
+          canvas.height = TARGET_H;
+          var cctx = canvas.getContext('2d');
+          cctx.imageSmoothingEnabled = true;
+          cctx.imageSmoothingQuality = 'high';
+          cctx.drawImage(img, 0, 0, TARGET_W, TARGET_H);
+
+          // 使用高质量PNG输出
+          var resized = canvas.toDataURL('image/png');
+          localStorage.setItem(key, resized);
+
+          // 更新UI中的行
+          var row = document.getElementById('row_lv' + lvNum);
+          if (row) {
+            row.querySelector('.size').textContent = TARGET_W + ' × ' + TARGET_H;
+            row.querySelector('.size').className = 'size';
+            row.querySelector('.status').textContent = '✅ 已修正';
+          }
+
+          log('LV.' + String(lvNum).padStart(2,'0') + ': ' + img.naturalWidth + '×' + img.naturalHeight + ' → ' + TARGET_W + '×' + TARGET_H);
+
+          done++;
+          if (done === total) {
+            log('');
+            log('✅ 完成！' + total + ' 个素材已统一到 ' + TARGET_W + '×' + TARGET_H);
+            log('★ 请刷新游戏页面 ★');
+            document.getElementById('btnResize').disabled = true;
+            document.getElementById('btnForce').disabled = true;
+            // 自动刷新统计
+            setTimeout(checkAll, 800);
+          }
+        };
+        img.src = origData;
+      });
+    }
+
+    function resizeWrong() {
+      doResize(needResize, '缩放异常素材');
+    }
+
+    function forceResizeAll() {
+      var allLv = allFound.map(function(item) { return item.lv; });
+      doResize(allLv, '强制全部重新缩放');
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
+  <title>合成飞车射击</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body {
+      width: 100%; height: 100%;
+      overflow: hidden;
+      background: #000;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      touch-action: none;
+      -webkit-touch-callout: none;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+    canvas {
+      display: block;
+      image-rendering: pixelated;
+    }
+    /* 加载画面 */
+    #loading {
+      position: absolute;
+      width: 100%; height: 100%;
+      background: #1a1a2e;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      color: #FFF;
+      font-family: Arial, sans-serif;
+      z-index: 100;
+    }
+    #loading h1 { font-size: 36px; margin-bottom: 20px; color: #7C4DFF; }
+    #loading p { font-size: 16px; color: #9E9E9E; }
+    .loading-bar {
+      width: 300px; height: 6px;
+      background: #333; border-radius: 3px;
+      margin-top: 20px; overflow: hidden;
+    }
+    .loading-bar-fill {
+      width: 0%; height: 100%;
+      background: #7C4DFF; border-radius: 3px;
+      transition: width 0.3s;
+    }
+    /* 编辑器开�?*/
+    #editor-toggle {
+      position: fixed;
+      bottom: 10px; right: 10px;
+      width: 40px; height: 40px;
+      background: rgba(124,77,255,0.8);
+      border: none; border-radius: 50%;
+      color: #FFF; font-size: 20px;
+      cursor: pointer; z-index: 200;
+      display: flex; justify-content: center; align-items: center;
+    }
+    #editor-toggle:hover { background: rgba(124,77,255,1); }
+  </style>
+</head>
+<body>
+  <!-- 加载画面 -->
+  <div id="loading">
+    <h1>合成飞车射击</h1>
+    <p>正在加载游戏资源...</p>
+    <div class="loading-bar"><div class="loading-bar-fill" id="load-bar"></div></div>
+  </div>
+
+  <!-- 游戏画布 -->
+  <canvas id="gameCanvas"></canvas>
+
+  <!-- 编辑器开�?-->
+  <button id="editor-toggle" title="零代码编辑器">�?/button>
+
+  <!-- ERROR DEBUG: capture script errors -->
+  <script>window.__scriptErrors = []; window.addEventListener('error', function(e) { window.__scriptErrors.push({msg:e.message, file:e.filename, line:e.lineno, col:e.colno}); });</script>
+
+  <!-- 配置文件 -->
+  <script src="config/game-config.js?v=8"></script>
+  <script src="config/asset-config.js?v=34"></script>
+
+  <!-- 核心引擎 -->
+  <script src="src/core/engine.js?v=5"></script>
+  <script src="src/core/state.js?v=5"></script>
+
+  <!-- 游戏模块 -->
+  <script src="src/modules/crafting/crafting-scene.js?v=104"></script>
+  <script src="src/modules/battle/battle-scene.js?v=43"></script>
+
+  <!-- 编辑�?-->
+  <script src="src/editor/component-editor.js?v=11"></script>
+
+  <!-- 主入�?-->
+  <script>
+    // 全局引用
+    window.gameState = gameState;
+
+    // ========== 加载流程 ==========
+    const loadBar = document.getElementById('load-bar');
+    const loadingEl = document.getElementById('loading');
+    let loadProgress = 0;
+
+    function updateLoad(progress) {
+      loadProgress = progress;
+      loadBar.style.width = progress + '%';
+    }
+
+    // ========== 初始化游�?==========
+    async function initGame() {
+      updateLoad(10);
+
+      // 预加载美术素�?      await new Promise(function(resolve) {
+        var done = false;
+        AssetConfig.preloadAll(function(progress) {
+          updateLoad(10 + Math.floor(progress * 30));
+          if (progress >= 1 && !done) {
+            done = true;
+            resolve();
+          }
+        });
+        // 3秒超时（即使图片未全部加载也继续�?        setTimeout(function() {
+          if (!done) { done = true; resolve(); }
+        }, 3000);
+      });
+
+      updateLoad(40);
+
+      // 加载自定义配�?      const editor = new ComponentEditor();
+      editor.loadCustomConfig();
+      window.componentEditor = editor;
+
+      updateLoad(50);
+
+      // 创建引擎
+      const engine = new GameEngine('gameCanvas');
+      window.gameEngine = engine;
+
+      updateLoad(60);
+
+      // 注册场景
+      engine.registerScene('crafting', new CraftingScene());
+      engine.registerScene('battle', new BattleScene());
+
+      // ========== 编辑器渲染钩子（在start之前设置�?==========
+      const _originalLoopFn = engine._loop.bind(engine);
+      engine._loop = function() {
+        if (!engine.running) return;
+        const now = performance.now();
+        engine.deltaTime = (now - engine.lastTime) / 1000;
+        engine.lastTime = now;
+        if (engine.deltaTime > 0.1) engine.deltaTime = 0.016;
+
+        const scene = engine.scenes[engine.currentScene];
+        if (scene) {
+          scene.update(engine.deltaTime);
+          scene.render(engine.ctx);
+          if (window.componentEditor && window.componentEditor.visible) {
+            window.componentEditor.render(engine.ctx);
+          }
+        }
+
+        requestAnimationFrame(() => engine._loop());
+      };
+
+      updateLoad(80);
+
+      // 加载存档（临时：清除旧存档以修复车辆丢失问题，后续可删除此行�?      try {
+        localStorage.removeItem('merge_racer_shooter_save');
+        const savedData = null; // 强制使用新默认数�?        if (savedData) {
+          gameState.deserialize(savedData);
+          console.log('存档已加�?);
+        } else {
+          console.log('使用默认数据（含3辆初始车辆）');
+        }
+      } catch(e) {
+        console.warn('存档加载失败，使用默认数�?', e);
+      }
+
+      updateLoad(100);
+
+      // 切换到主界面
+      engine.switchScene('crafting');
+
+      // 隐藏加载画面
+      setTimeout(() => {
+        loadingEl.style.display = 'none';
+        engine.start();
+      }, 500);
+
+      // ========== 编辑器按�?==========
+      document.getElementById('editor-toggle').addEventListener('click', () => {
+        editor.toggle();
+      });
+
+      // 编辑器触摸拦�?- 统一的坐标转换函�?      const canvas = document.getElementById('gameCanvas');
+      const getCanvasPos = (e) => {
+        const rect = canvas.getBoundingClientRect();
+        const touch = e.touches ? e.touches[0] : (e.changedTouches ? e.changedTouches[0] : e);
+        const scaleX = 720 / canvas.clientWidth;
+        const scaleY = 1280 / canvas.clientHeight;
+        return {
+          x: (touch.clientX - rect.left) * scaleX,
+          y: (touch.clientY - rect.top) * scaleY,
+        };
+      };
+
+      // touchstart / mousedown
+      canvas.addEventListener('touchstart', (e) => {
+        if (editor.visible) {
+          var pos = getCanvasPos(e);
+          editor.handleTouchDown(pos); // 滚动准备
+          editor.handleClick(pos);
+          e.preventDefault();
+        }
+      }, { passive: false });
+
+      canvas.addEventListener('mousedown', (e) => {
+        if (editor.visible) {
+          var pos = getCanvasPos(e);
+          editor.handleTouchDown(pos); // 滚动准备
+          editor.handleClick(pos);
+        }
+      });
+
+      // touchmove / mousemove - 拖拽支持
+      canvas.addEventListener('touchmove', (e) => {
+        if (editor.visible) {
+          editor.handleMove(getCanvasPos(e));
+          e.preventDefault();
+        }
+      }, { passive: false });
+
+      canvas.addEventListener('mousemove', (e) => {
+        if (editor.visible && e.buttons > 0) {
+          editor.handleMove(getCanvasPos(e));
+        }
+      });
+
+      // touchend / mouseup - 拖拽结束
+      canvas.addEventListener('touchend', (e) => {
+        if (editor.visible) {
+          var pos;
+          if (e.changedTouches && e.changedTouches[0]) {
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = 720 / canvas.clientWidth;
+            const scaleY = 1280 / canvas.clientHeight;
+            pos = {
+              x: (e.changedTouches[0].clientX - rect.left) * scaleX,
+              y: (e.changedTouches[0].clientY - rect.top) * scaleY,
+            };
+          } else {
+            pos = { x: 0, y: 0 };
+          }
+          editor.handleUp(pos);
+        }
+      }, { passive: false });
+
+      canvas.addEventListener('mouseup', (e) => {
+        if (editor.visible) {
+          editor.handleUp(getCanvasPos(e));
+        }
+      });
+
+      // 滚轮事件（编辑器列表滚动�?      canvas.addEventListener('wheel', (e) => {
+        if (editor.visible) {
+          e.preventDefault();
+          editor.handleWheel(e.deltaY > 0 ? 1 : -1);
+        }
+      }, { passive: false });
+
+      // ========== 自动保存 ==========
+      setInterval(() => {
+        engine.saveManager.save(gameState.serialize());
+      }, 30000); // �?0秒自动存�?
+      // ========== 页面关闭时保�?==========
+      window.addEventListener('beforeunload', () => {
+        engine.saveManager.save(gameState.serialize());
+      });
+    }
+
+    // 启动
+    initGame().then(() => {
+      console.log('游戏初始化完�?);
+    }).catch(err => {
+      console.error('游戏初始化失�?', err);
+      loadingEl.innerHTML = '<h1 style="color:#F44336">加载失败</h1><p>' + (err && err.message ? err.message : '未知错误') + '</p>';
+      // 3秒后强制隐藏loading，让用户能看到canvas
+      setTimeout(() => {
+        if (loadingEl) loadingEl.style.display = 'none';
+      }, 3000);
+    });
+  </script>
+</body>
+</html>

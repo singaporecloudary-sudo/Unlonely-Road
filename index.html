@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
+  <title>不孤独的公路</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body {
+      width: 100%; height: 100%;
+      overflow: hidden;
+      background: #000;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      touch-action: none;
+      -webkit-touch-callout: none;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+    canvas {
+      display: block;
+      image-rendering: pixelated;
+    }
+
+    /* ============ 登录页（单张大图） ============ */
+    #loading {
+      position: absolute;
+      width: 100%; height: 100%;
+      background-color: #000;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 100;
+      overflow: hidden;
+    }
+    /* 登录页内部容器：保持9:16比例 + 居中, 按钮锚定到此容器 */
+    #login-stage {
+      position: relative;
+      height: 100%;
+      aspect-ratio: 720 / 1280;
+      max-width: 100%;
+      background-image: url("assets/scenes/login_page.jpg");
+      background-size: 100% 100%;
+      background-position: center;
+      background-repeat: no-repeat;
+    }
+
+    /* 加载进度条（细线，置于按钮上方） */
+    #load-bar-wrap {
+      position: absolute;
+      left: 50%;
+      bottom: 25%;
+      transform: translateX(-50%);
+      width: 38%;
+      height: 3px;
+      background: rgba(255,255,255,0.12);
+      border-radius: 2px;
+      overflow: hidden;
+      z-index: 2;
+    }
+    #load-bar {
+      width: 0%; height: 100%;
+      background: linear-gradient(90deg, #4A90E2 0%, #00E5FF 100%);
+      border-radius: 2px;
+      transition: width 0.3s;
+      box-shadow: 0 0 10px rgba(0,229,255,0.7);
+    }
+
+    /* 开始按钮热区（精确对齐图中"开始旅程": 原图 Y 978~1027 / 1280, 即 bottom 19.8%~23.6%） */
+    #start-btn {
+      position: absolute;
+      left: 50%;
+      bottom: 19.8%;
+      transform: translateX(-50%);
+      width: 38%;
+      height: 4%;
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      z-index: 3;
+      display: none;
+      outline: none;
+      animation: btnPulse 1.8s ease-in-out infinite;
+      border-radius: 12px;
+    }
+    @keyframes btnPulse {
+      0%, 100% { box-shadow: 0 0 0 rgba(0,229,255,0); }
+      50%      { box-shadow: 0 0 32px 4px rgba(0,229,255,0.55); }
+    }
+    #start-btn:active {
+      transform: translateX(-50%) scale(0.97);
+    }
+
+    /* 编辑器开关 */
+    #editor-toggle {
+      position: fixed;
+      bottom: 10px; right: 10px;
+      width: 40px; height: 40px;
+      background: rgba(124,77,255,0.8);
+      border: none; border-radius: 50%;
+      color: #FFF; font-size: 20px;
+      cursor: pointer; z-index: 200;
+      display: flex; justify-content: center; align-items: center;
+    }
+    #editor-toggle:hover { background: rgba(124,77,255,1); }
+  </style>
+</head>
+<body>
+  <!-- 登录页（直接使用大图） -->
+  <div id="loading">
+    <div id="login-stage">
+      <!-- 加载进度条 -->
+      <div id="load-bar-wrap"><div id="load-bar"></div></div>
+      <!-- 开始按钮热区（精确锚定图中"开始旅程"按钮位置） -->
+      <button id="start-btn" aria-label="开始游戏"></button>
+    </div>
+  </div>
+
+  <!-- 游戏画布 -->
+  <canvas id="gameCanvas"></canvas>
+
+  <!-- 编辑器开关 -->
+  <button id="editor-toggle" title="组件编辑器">⚙</button>
+
+  <!-- 配置文件 -->
+  <script src="config/game-config.js?v=2000042"></script>
+  <script src="config/asset-config.js?v=1004014"></script>
+
+  <!-- 核心引擎 -->
+  <script src="src/core/engine.js?v=1004114"></script>
+  <script src="src/core/state.js?v=2000020"></script>
+  <script src="src/core/audio-manager.js?v=2000025"></script>
+
+  <!-- 游戏模块 -->
+  <script src="src/modules/crafting/crafting-scene.js?v=2000041"></script>
+  <script src="src/modules/battle/battle-scene.js?v=2000045"></script>
+
+  <!-- 编辑器 -->
+  <script src="src/editor/component-editor.js?v=2000029"></script>
+  <script src="src/editor/car-transform-editor.js?v=1004714"></script>
+
+  <!-- 主入口 -->
+  <script>
+    // 全局引用
+    window.gameState = gameState;
+
+    // ========== 加载流程 ==========
+    const loadBar = document.getElementById('load-bar');
+    const loadingEl = document.getElementById('loading');
+    let loadProgress = 0;
+
+    function updateLoad(progress) {
+      loadProgress = progress;
+      loadBar.style.width = progress + '%';
+    }
+
+    // ========== 初始化游戏 ==========
+    async function initGame() {
+      updateLoad(10);
+
+      // 预加载美术素材
+      await new Promise(function(resolve) {
+        var done = false;
+        AssetConfig.preloadAll(function(progress) {
+          updateLoad(10 + Math.floor(progress * 30));
+          if (progress >= 1 && !done) {
+            done = true;
+            resolve();
+          }
+        });
+        // 3秒超时（即使图片未全部加载也继续）
+        setTimeout(function() {
+          if (!done) { done = true; resolve(); }
+        }, 3000);
+      });
+
+      updateLoad(40);
+
+      // 加载自定义配置
+      const editor = new ComponentEditor();
+      editor.loadCustomConfig();
+      window.componentEditor = editor;
+
+
+
+      updateLoad(50);
+
+      // 创建引擎
+      const engine = new GameEngine('gameCanvas');
+      window.gameEngine = engine;
+
+      updateLoad(60);
+
+      // 注册场景
+      engine.registerScene('crafting', new CraftingScene());
+      engine.registerScene('battle', new BattleScene());
+
+      // ========== 编辑器渲染钩子（在start之前设置） ==========
+      const _originalLoopFn = engine._loop.bind(engine);
+      engine._loop = function() {
+        if (!engine.running) return;
+        const now = performance.now();
+        engine.deltaTime = (now - engine.lastTime) / 1000;
+        engine.lastTime = now;
+        if (engine.deltaTime > 0.1) engine.deltaTime = 0.016;
+
+        const scene = engine.scenes[engine.currentScene];
+        if (scene) {
+          scene.update(engine.deltaTime);
+          scene.render(engine.ctx);
+          if (window.componentEditor && window.componentEditor.visible) {
+            window.componentEditor.render(engine.ctx);
+          }
+        }
+
+        requestAnimationFrame(() => engine._loop());
+      };
+
+      updateLoad(80);
+
+      // 加载存档（临时：清除旧存档以修复车辆丢失问题，后续可删除此行）
+      try {
+        localStorage.removeItem('merge_racer_shooter_save');
+        const savedData = null; // 强制使用新默认数据
+        if (savedData) {
+          gameState.deserialize(savedData);
+          console.log('save loaded');
+        } else {
+          console.log('using default data with 3 initial cars');
+        }
+      } catch(e) {
+        console.warn('save load failed, using default', e);
+      }
+
+      updateLoad(100);
+
+      // 等待用户点击"开始"按钮（用户交互必需，用于解锁音频）
+      const startBtn = document.getElementById('start-btn');
+      startBtn.style.display = 'block';
+
+      await new Promise(function(resolve) {
+        startBtn.addEventListener('click', function onStart() {
+          startBtn.removeEventListener('click', onStart);
+          // 解锁音频（必须在用户交互回调内）
+          if (window.AudioManager) {
+            window.AudioManager.unlock();
+          }
+          resolve();
+        }, { once: true });
+      });
+
+      // 切换到主界面（onEnter会触发BGM）
+      engine.switchScene('crafting');
+
+      // 隐藏加载画面
+      loadingEl.style.display = 'none';
+      engine.start();
+
+      // ========== 编辑器按钮 ==========
+      document.getElementById('editor-toggle').addEventListener('click', () => {
+        editor.toggle();
+      });
+
+      // 编辑器触摸拦截 - 统一的坐标转换函数
+      const canvas = document.getElementById('gameCanvas');
+      const getCanvasPos = (e) => {
+        const rect = canvas.getBoundingClientRect();
+        const touch = e.touches ? e.touches[0] : (e.changedTouches ? e.changedTouches[0] : e);
+        const scaleX = 720 / canvas.clientWidth;
+        const scaleY = 1280 / canvas.clientHeight;
+        return {
+          x: (touch.clientX - rect.left) * scaleX,
+          y: (touch.clientY - rect.top) * scaleY,
+        };
+      };
+
+      // touchstart / mousedown
+      canvas.addEventListener('touchstart', (e) => {
+        if (editor.visible) {
+          var pos = getCanvasPos(e);
+          editor.handleTouchDown(pos);
+          editor.handleClick(pos);
+          e.preventDefault();
+        }
+      }, { passive: false });
+
+      canvas.addEventListener('mousedown', (e) => {
+        if (editor.visible) {
+          var pos = getCanvasPos(e);
+          editor.handleTouchDown(pos);
+          editor.handleClick(pos);
+        }
+      });
+
+      // touchmove / mousemove - 拖拽支持
+      canvas.addEventListener('touchmove', (e) => {
+        if (editor.visible) {
+          editor.handleMove(getCanvasPos(e));
+          e.preventDefault();
+        }
+      }, { passive: false });
+
+      canvas.addEventListener('mousemove', (e) => {
+        if (editor.visible && e.buttons > 0) {
+          editor.handleMove(getCanvasPos(e));
+        }
+      });
+
+      // touchend / mouseup - 拖拽结束
+      canvas.addEventListener('touchend', (e) => {
+        if (editor.visible) {
+          var pos;
+          if (e.changedTouches && e.changedTouches[0]) {
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = 720 / canvas.clientWidth;
+            const scaleY = 1280 / canvas.clientHeight;
+            pos = {
+              x: (e.changedTouches[0].clientX - rect.left) * scaleX,
+              y: (e.changedTouches[0].clientY - rect.top) * scaleY,
+            };
+          } else {
+            pos = { x: 0, y: 0 };
+          }
+          editor.handleUp(pos);
+        }
+      }, { passive: false });
+
+      canvas.addEventListener('mouseup', (e) => {
+        if (editor.visible) {
+          editor.handleUp(getCanvasPos(e));
+        }
+      });
+
+      // 滚轮事件（编辑器列表滚动）
+      canvas.addEventListener('wheel', (e) => {
+        if (editor.visible) {
+          e.preventDefault();
+          editor.handleWheel(e.deltaY > 0 ? 1 : -1);
+        }
+      }, { passive: false });
+
+      // ========== 自动保存 ==========
+      setInterval(() => {
+        engine.saveManager.save(gameState.serialize());
+      }, 30000); // 每30秒自动存档
+      // ========== 页面关闭时保存 ==========
+      window.addEventListener('beforeunload', () => {
+        engine.saveManager.save(gameState.serialize());
+      });
+    }
+
+    // 启动
+    initGame().then(() => {
+      console.log('game init done');
+    }).catch(err => {
+      console.error('game init failed', err);
+      loadingEl.innerHTML = '<h1 style="color:#F44336">加载失败</h1><p>' + (err && err.message ? err.message : '未知错误') + '</p>';
+      // 3秒后强制隐藏loading，让用户能看到canvas
+      setTimeout(() => {
+        if (loadingEl) loadingEl.style.display = 'none';
+      }, 3000);
+    });
+  </script>
+</body>
+</html>

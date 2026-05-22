@@ -1,0 +1,198 @@
+﻿===============================================================================
+关键代码位置汇总表
+===============================================================================
+
+【问题症状】UI显示 "118.6dd"、"39.8dd" 
+
+【搜索结论】
+1. _formatNumber 定义: 仅在 crafting-scene.js 行 622-630 存在 1 个定义
+2. "dd" 后缀代码: 项目中不存在硬编码的 'dd' 后缀
+3. 其他 formatNumber: 无其他地方定义或覆盖 formatNumber
+
+---
+
+## 详细代码位置列表
+
+### 1️⃣ _formatNumber 函数定义
+位置: F:\游戏制作\合成飞车射击\src\modules\crafting\crafting-scene.js 行 622-630
+`javascript
+CraftingScene.prototype._formatNumber = function(n) {
+  if (!n) n = 0;
+  n = Math.floor(n);
+  if (n >= 1e9) return (n / 1e9).toFixed(1) + 'B';    // 十亿级
+  if (n >= 1e6) return (n / 1e6).toFixed(1) + 'M';    // 百万级
+  if (n >= 1e3) return (n / 1e3).toFixed(1) + 'K';    // 千级
+  return String(n);                                   // 个位 - 无后缀
+};
+`
+
+【关键】此函数不包含任何 'dd' 后缀!
+
+---
+
+### 2️⃣ _formatNumber 的所有6处调用位置
+
+【调用1】行 97 - 挂机收益通知
+位置: onEnter 方法中
+`javascript
+self.showNotification('挂机收益: +' + self._formatNumber(idleCoins) + ' 金币');
+`
+
+【调用2】行 197 - 每秒收益显示（主界面右下）
+位置: _renderTopBar 方法中
+`javascript
+ctx.fillText(this._formatNumber(cps) + '/S', L.cpsBig.x + L.cpsBig.w / 2, L.cpsBig.y + 28);
+`
+
+【调用3】行 207 - 钻石数量显示
+位置: _renderTopBar 方法中
+`javascript
+ctx.fillText(this._formatNumber(gems), L.gemsDisplay.x + 34, L.gemsDisplay.y + 25);
+`
+
+【调用4】行 217 - 金币数量显示
+位置: _renderTopBar 方法中
+`javascript
+ctx.fillText(this._formatNumber(coins), L.coinsDisplay.x + 34, L.coinsDisplay.y + 25);
+`
+
+【调用5】行 415 - 购买车辆价格显示（有BUG - typo: buyCmd -> buyBtn）
+位置: _renderBottom 方法中
+`javascript
+ctx.fillText(this._formatNumber(price), L.buyBtn.x + L.buyBtn.w / 2, L.buyCmd.y + L.buyBtn.h + 20);
+// 这里有typo! 应该是 L.buyBtn.y 而不是 L.buyCmd.y
+`
+
+【调用6】行 567 - 购买成功通知
+位置: _handleButtonClick 方法中
+`javascript
+this.showNotification('购买成功! 花费 ' + this._formatNumber(result.price) + ' 金币');
+`
+
+---
+
+### 3️⃣ asset-config.js 的 renderButton 方法
+
+位置: F:\游戏制作\合成飞车射击\config\asset-config.js 行 493-503
+`javascript
+renderButton: function(ctx, btnKey, x, y, w, h) {
+  var cfg = this.ui.buttons.items[btnKey];
+  if (!cfg) return false;
+  var path = this.ui.buttons.path + cfg.file;
+  var img = this._getCustomOrLoaded(path);
+  if (img && (img.complete || img.naturalWidth > 0)) {
+    this._drawImageFit(ctx, img, x, y, w, h);
+    return true;
+  }
+  return false;
+};
+`
+
+【结论】renderButton 只绘制按钮图片，不绘制文字。
+      按钮上的价格文本由 crafting-scene.js 单独通过 ctx.fillText() 绘制。
+
+---
+
+### 4️⃣ 文件加载配置（缓存版本号）
+
+位置: F:\游戏制作\合成飞车射击\index.html 行 79-91
+`html
+<script src="config/game-config.js?v=3"></script>
+<script src="config/asset-config.js?v=3"></script>
+<script src="src/core/engine.js?v=3"></script>
+<script src="src/core/state.js?v=3"></script>
+<script src="src/modules/crafting/crafting-scene.js?v=3"></script>
+<script src="src/modules/battle/battle-scene.js?v=3"></script>
+<script src="src/editor/component-editor.js?v=3"></script>
+`
+
+【重要】使用 ?v=3 版本号控制缓存。
+      如修改代码后没更新版本号，旧版本会被缓存！
+
+---
+
+### 5️⃣ 全项目 formatNumber 搜索结果
+
+已检查的所有文件：
+✓ F:\游戏制作\合成飞车射击\src\core\engine.js - 无 formatNumber
+✓ F:\游戏制作\合成飞车射击\src\core\state.js - 无 formatNumber
+✓ F:\游戏制作\合成飞车射击\src\modules\battle\battle-scene.js - 无 formatNumber
+✓ F:\游戏制作\合成飞车射击\config\asset-config.js - 无 formatNumber
+✓ F:\游戏制作\合成飞车射击\config\game-config.js - 无 formatNumber
+✓ F:\游戏制作\合成飞车射击\index.html - 无 formatNumber
+✓ F:\游戏制作\合成飞车射击\src\editor\component-editor.js - 无 formatNumber
+✓ F:\游戏制作\合成飞车射击\server.js - 无 formatNumber
+
+---
+
+### 6️⃣ "dd" 字符串全项搜索结果
+
+搜索模式: "dd" 后缀
+搜索结果: 无任何硬编码的 'dd' 字符串
+
+出现过的"dd"相关词汇（不是dd后缀）：
+- addEventListener (event listener 事件监听)
+- addCoins (add coins 添加金币)
+- addGems (add gems 添加钻石)
+- _addEffect (add effect 添加特效)
+- _addFloatingText (add floating text 添加浮动文字)
+- addColorStop (canvas gradient 渐变颜色)
+- addTask (asset preload 资源预加载)
+
+---
+
+## 可能的根本原因分析
+
+【假设A - 浏览器缓存】(最可能)
+- 旧版本 crafting-scene.js 被缓存
+- 解决: Ctrl+F5 强制刷新
+
+【假设B - 服务器过期文件】
+- 服务器部署的仍是包含 'dd' 的旧版本
+- 解决: 重新部署最新文件
+
+【假设C - 版本号未更新】
+- index.html 中 ?v=3 没有改为 ?v=4
+- 浏览器认为文件未变更，使用缓存
+- 解决: 更新版本号并重新部署
+
+【假设D - 其他脚本注入】
+- localStorage、浏览器插件或用户脚本修改了 formatNumber
+- 解决: 打开开发者工具检查 Network 和 Console
+
+---
+
+## 验证步骤
+
+1. 打开浏览器开发者工具 (F12)
+2. 切换到 Console 标签
+3. 执行:
+   console.log(CraftingScene.prototype._formatNumber(118.6))
+   
+4. 应该输出: "118.6"
+   如果输出 "118.6dd" 说明代码有问题
+   
+5. 继续检查：
+   console.log(CraftingScene.prototype._formatNumber.toString())
+   
+6. 查看完整函数代码是否正确
+
+---
+
+## 推荐修复方案
+
+1. 更新 index.html 版本号:
+   ?v=3 → ?v=4
+
+2. 或清空所有缓存标记:
+   在 index.html 的 <meta> 标签中添加:
+   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+   <meta http-equiv="Pragma" content="no-cache">
+   <meta http-equiv="Expires" content="0">
+
+3. 在服务器响应头中添加:
+   Cache-Control: no-cache, must-revalidate
+   ETag: [unique-hash]
+
+===============================================================================
+EOF

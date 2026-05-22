@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>重置游戏数据</title>
+  <style>
+    body { font-family: Arial; padding: 40px; text-align: center; background: #1a1a2e; color: #fff; }
+    button { font-size: 18px; padding: 16px 32px; margin: 10px; cursor: pointer; border: none; border-radius: 8px; }
+    .danger { background: #f44336; color: white; }
+    .primary { background: #4CAF50; color: white; }
+    pre { text-align: left; background: #000; padding: 16px; border-radius: 4px; max-height: 300px; overflow: auto; font-size: 12px; }
+  </style>
+</head>
+<body>
+  <h1>合成飞车射击 - 数据重置工具</h1>
+  <p>清空所有 localStorage 数据，让游戏从全新状态启动。</p>
+  <button class="danger" onclick="clearAll()">清空所有数据</button>
+  <button class="primary" onclick="goGame()">返回游戏</button>
+  <h3>当前 localStorage 内容：</h3>
+  <pre id="ls"></pre>
+  <script>
+    function refresh() {
+      const out = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        const v = localStorage.getItem(k);
+        out.push(k + ': ' + (v.length > 200 ? v.substring(0, 200) + '...(' + v.length + ' chars)' : v));
+      }
+      document.getElementById('ls').textContent = out.length ? out.join('\n\n') : '(空)';
+    }
+    function clearAll() {
+      if (!confirm('确定要清空所有数据吗？')) return;
+      localStorage.clear();
+      sessionStorage.clear();
+      alert('已清空。点"返回游戏"按钮');
+      refresh();
+    }
+    function goGame() {
+      location.href = 'index.html';
+    }
+    refresh();
+  </script>
+</body>
+</html>

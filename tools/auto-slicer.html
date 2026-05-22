@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>🎮 合成飞车射击 — 自动切图工具 v2</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+  background: #0a0e1a; color: #e0e0e0;
+}
+h1 { text-align: center; padding: 10px;
+  background: linear-gradient(90deg, #1a237e, #4a148c, #1a237e);
+  color: #00e5ff; font-size: 18px; letter-spacing: 1px; }
+.toolbar {
+  display: flex; gap: 8px; padding: 8px 12px;
+  background: #111827; border-bottom: 1px solid #333; flex-wrap: wrap;
+  align-items: center;
+}
+.workspace {
+  display: flex; height: calc(100vh - 90px);
+}
+/* 左侧：参考图 */
+.left-panel { width: 400px; min-width: 360px; display: flex; flex-direction: column; padding: 6px; }
+.canvas-wrap {
+  position: relative; width: 100%; aspect-ratio: 720/1280;
+  border: 2px solid #00e5ff; border-radius: 8px; overflow: hidden;
+  background: #000; cursor: crosshair;
+}
+.canvas-wrap canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: contain; }
+.overlay-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+  pointer-events: none; }
+
+/* 缩略图 */
+.thumb-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; margin-top: 6px;
+  max-height: 200px; overflow-y: auto; padding: 4px; background: #111; border-radius: 6px; }
+.thumb-item {
+  aspect-ratio: 1; border: 2px solid #333; border-radius: 4px; cursor: pointer;
+  overflow: hidden; position: relative; transition: all 0.15s;
+}
+.thumb-item:hover { border-color: #00e5ff; transform: scale(1.05); }
+.thumb-item.selected { border-color: #ff9800; box-shadow: 0 0 6px rgba(255,152,0,0.5); }
+.thumb-item canvas { width: 100%; height: 100%; object-fit: contain; }
+.thumb-label { position: absolute; bottom: 0; left: 0; right: 0;
+  background: rgba(0,0,0,0.8); color: #fff; font-size: 9px; text-align: center;
+  padding: 1px 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* 右侧面板 */
+.right-panel { flex: 1; display: flex; flex-direction: column; padding: 6px; overflow-y: auto; gap: 6px; }
+.card {
+  background: linear-gradient(135deg, #1a1f35, #16213e); border: 1px solid #334;
+  border-radius: 8px; padding: 10px;
+}
+.card h3 { color: #00e5ff; font-size: 13px; margin-bottom: 6px; border-bottom: 1px solid #334; padding-bottom: 3px; }
+
+/* 元素列表 */
+.elem-list { display: flex; flex-direction: column; gap: 4px; max-height: 300px; overflow-y: auto; }
+.elem-item {
+  display: flex; align-items: center; gap: 8px; padding: 6px 10px;
+  background: #0d1224; border: 1px solid #234; border-radius: 6px;
+  cursor: pointer; transition: all 0.12s; font-size: 12px;
+}
+.elem-item:hover { border-color: #00e5ff; background: #152238; }
+.elem-item.selected { border-color: #ff9800; background: #1a2744; }
+.elem-thumb { width: 32px; height: 32px; border-radius: 4px; border: 1px solid #444; object-fit: contain;
+  background: #000; flex-shrink: 0; }
+.elem-info { flex: 1; min-width: 0; }
+.elem-name { font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.elem-path { color: #888; font-size: 10px; font-family: monospace; }
+.badge { 
+  padding: 1px 6px; border-radius: 8px; font-size: 9px; font-weight: bold;
+  flex-shrink: 0;
+}
+.badge-btn { background: #1565C0; color: #fff; }
+.badge-icon { background: #E91E63; color: #fff; }
+.badge-bar { background: #FF9800; color: #000; }
+.badge-bg { background: #7C4DFF; color: #fff; }
+
+/* 预览区 */
+.preview-wrap { text-align: center; margin-top: 6px; }
+.preview-wrap canvas { border: 2px solid #444; border-radius: 6px; max-width: 240px; max-height: 240px;
+  background: repeating-conic-gradient(#1a1a2e 0% 25%, #111 0% 50%) 0/16px 16px; }
+
+/* 按钮 */
+.btn {
+  padding: 7px 14px; border: none; border-radius: 6px; cursor: pointer;
+  font-size: 12px; font-weight: bold; transition: all 0.15s; color: #fff;
+}
+.btn-sm { padding: 4px 10px; font-size: 11px; }
+.btn-pri { background: linear-gradient(135deg, #00bcd4, #0097a7); }
+.btn-pri:hover { filter: brightness(1.15); }
+.btn-suc { background: linear-gradient(135deg, #4caf50, #388e3c); }
+.btn-warn { background: linear-gradient(135deg, #ff9800, #ef6c00); }
+.btn-dan { background: linear-gradient(135deg, #f44336, #d32f2f); }
+
+/* 状态栏 */
+.status { padding: 5px 12px; background: #0d1224; border-top: 1px solid #333;
+  font-size: 11px; display: flex; justify-content: space-between; align-items: center; }
+.status .ok { color: #69f0ae; }
+.status .warn { color: #ffab40; }
+
+/* 进度条 */
+.progress { height: 18px; background: #1a1f35; border-radius: 9px; overflow: hidden;
+  border: 1px solid #334; display: none; margin-top: 6px; }
+.progress.show { display: block; }
+.progress > div { height: 100%; background: linear-gradient(90deg, #00e5ff, #69f0ae);
+  transition: width 0.2s; border-radius: 9px; display: flex; align-items: center;
+  justify-content: center; font-size: 10px; font-weight: bold; color: #000; }
+</style>
+</head>
+<body>
+
+<h1>🎮 合成飞车射击 — 自动切图工具 v2</h1>
+
+<div class="toolbar">
+  <button class="btn btn-pri" onclick="loadRefImage()">📂 加载参考图 (image_1.png)</button>
+  <button class="btn btn-suc" onclick="exportAll()">💾 导出全部PNG</button>
+  <button class="btn btn-warn" onclick="injectToGame()">🎨 注入游戏(localStorage)</button>
+  <button class="btn btn-dan btn-sm" onclick="clearStorage()">🗑️ 清除缓存</button>
+  <span style="color:#888;font-size:11px;margin-left:auto">加载参考图后自动显示所有切割区域预览</span>
+</div>
+
+<div class="workspace">
+  <!-- 左侧 -->
+  <div class="left-panel">
+    <div class="canvas-wrap" id="canvasWrap">
+      <canvas id="refCanvas"></canvas>
+      <canvas class="overlay-canvas" id="overlayCanvas"></canvas>
+    </div>
+    
+    <div class="thumb-grid" id="thumbGrid"></div>
+  </div>
+
+  <!-- 右侧 -->
+  <div class="right-panel">
+    <div class="card">
+      <h3>📋 UI元素列表 (点击选中查看)</h3>
+      <div class="elem-list" id="elemList"></div>
+    </div>
+    
+    <div class="card" id="previewCard" style="display:none">
+      <h3>🔍 切图预览 — <span id="previewName"></span></h3>
+      <div class="preview-wrap"><canvas id="previewCanvas" width="240" height="240"></canvas></div>
+      <p style="font-size:11px;color:#888;margin-top:4px;" id="previewInfo"></p>
+    </div>
+
+    <div class="progress" id="progressBar"><div id="progressFill" style="width:0%">0%</div></div>
+
+    <div class="card">
+      <h3>📜 日志</h3>
+      <div id="logArea" style="max-height:120px;overflow-y:auto;font-size:10px;
+        font-family:monospace;background:#080c16;padding:6px;border-radius:4px;border:1px solid #222;"></div>
+    </div>
+  </div>
+</div>
+
+<div class="status">
+  <span id="statusText">⏳ 请加载参考图开始</span>
+  <span id="imgInfo"></span>
+</div>
+
+<script>
+// ============================================================
+//  切割区域定义（已验证的坐标！基于720宽缩放图）
+//  来源: crafting-scene.js layout 对象
+// ============================================================
+const REGIONS = [
+  // ===== 按钮 =====
+  { name: '设置按钮(齿轮)', path: 'assets/ui/buttons/btn_settings.png',
+    x1:22, y1:108, x2:80, y2:166, size:[80,80], cat:'btn' },
+  { name: 'VIP按钮(皇冠)', path: 'assets/ui/buttons/btn_vip.png',
+    x1:22, y1:172, x2:80, y2:230, size:[80,80], cat:'btn' },
+  { name: '换车按钮', path: 'assets/ui/buttons/btn_change_car.png',
+    x1:270, y1:360, x2:450, y2:398, size:[200,60], cat:'btn' },
+  { name: '自动合成按钮', path: 'assets/ui/buttons/btn_auto_craft.png',
+    x1:48, y1:508, x2:223, y2:560, size:[200,60], cat:'btn' },
+  { name: '关卡按钮(STAGE)', path: 'assets/ui/buttons/btn_stage.png',
+    x1:268, y1:508, x2:453, y2:572, size:[200,60], cat:'btn' },
+  { name: '竞速按钮(Race)', path: 'assets/ui/buttons/btn_race.png',
+    x1:498, y1:508, x2:670, y2:560, size:[200,60], cat:'btn' },
+  { name: '无人机按钮(Drone)', path: 'assets/ui/buttons/btn_drone.png',
+    x1:35, y1:1120, x2:200, y2:1180, size:[80,80], cat:'btn' },
+  { name: '购买车辆按钮', path: 'assets/ui/buttons/btn_buy_car.png',
+    x1:228, y1:1120, x2:492, y2:1180, size:[200,60], cat:'btn' },
+  { name: '商店按钮(Shop)', path: 'assets/ui/buttons/btn_shop.png',
+    x1:520, y1:1120, x2:685, y2:1180, size:[80,80], cat:'btn' },
+  // 右侧栏(原图3072宽，需要特殊处理)
+  { name: 'Lucky转盘按钮', path: 'assets/ui/buttons/btn_lucky.png',
+    srcOnly: true, sx:2620, sy:310, ex:2860, ey:530, size:[80,80], cat:'btn' },
+  // ===== 图标 =====
+  { name: '火焰图标(Turbo)', path: 'assets/ui/icons/icon_fire.png',
+    x1:28, y1:32, x2:68, y2:72, size:[40,40], cat:'icon' },
+  { name: '金币图标', path: 'assets/ui/icons/icon_coin.png',
+    srcOnly:true, sx:2640, sy:580, ex:2860, ey:780, size:[40,40], cat:'icon' },
+  { name: '钻石图标', path: 'assets/ui/icons/icon_gem.png',
+    srcOnly:true, sx:2710, sy:90, ex:2840, ey:200, size:[40,40], cat:'icon' },
+  // ===== 进度条 =====
+  { name: '进度条素材', path: 'assets/ui/bars/bar_progress.png',
+    x1:256, y1:465, x2:466, y2:480, size:[400,20], cat:'bar' },
+  // ===== 场景 =====
+  { name: '主界面背景', path: 'assets/scenes/main_bg/main_bg.png',
+    x1:0, y1:0, x2:720, y2:1280, size:[720,1280], cat:'scene' },
+];
+
+// 全局状态
+let refImg = null;       // 原始参考图 Image
+let scaledImg = null;    // 缩放到720宽的 Image
+let selectedId = null;
+
+const refCanvas = document.getElementById('refCanvas');
+const refCtx = refCanvas.getContext('2d');
+const overlayCanvas = document.getElementById('overlayCanvas');
+const overlayCtx = overlayCanvas.getContext('2d');
+
+// ============================================================
+//  加载参考图
+// ============================================================
+function loadRefImage() {
+  const input = document.createElement('input');
+  input.type = 'file'; input.accept = 'image/*';
+  input.onchange = e => { if(e.target.files[0]) loadImage(e.target.files[0]); };
+  input.click();
+}
+
+function loadImage(file) {
+  const url = URL.createObjectURL(file);
+  const img = new Image();
+  img.onload = () => {
+    refImg = img;
+    // 缩放到宽度720
+    const ratio = 720 / img.naturalWidth;
+    scaledImg = new Image();
+    scaledImg.onload = () => {
+      URL.revokeObjectURL(url);
+      initUI();
+      log(`✅ 参考图加载成功 ${img.naturalWidth}×${img.naturalHeight} → 720×${scaledImg.naturalHeight}`, 'ok');
+      setStatus(`✅ 已加载: ${file.name}`, 'ok');
+      document.getElementById('imgInfo').textContent =
+        `原始: ${img.naturalWidth}×${img.naturalHeight} | 工作: 720×${scaledImg.naturalHeight}`;
+    };
+    // 用canvas缩放
+    const c = document.createElement('canvas');
+    c.width = 720; c.height = Math.round(img.naturalHeight * ratio);
+    const cx = c.getContext('2d');
+    cx.drawImage(img, 0, 0, c.width, c.height);
+    scaledImg.src = c.toDataURL();
+  };
+  img.src = url;
+}
+
+// 拖拽支持
+document.getElementById('canvasWrap').addEventListener('dragover', e => {
+  e.preventDefault(); e.currentTarget.style.borderColor='#ff9800';
+});
+document.getElementById('canvasWrap').addEventListener('dragleave', e =>
+  e.currentTarget.style.borderColor='#00e5ff'
+);
+document.getElementById('canvasWrap').addEventListener('drop', e => {
+  e.preventDefault();
+  document.getElementById('canvasWrap').style.borderColor = '#00e5ff';
+  const f = e.dataTransfer.files[0];
+  if(f && f.type.startsWith('image/')) loadImage(f);
+});
+
+// ============================================================
+//  UI 初始化与渲染
+// ============================================================
+function initUI() {
+  // 设置canvas尺寸
+  refCanvas.width = 720; refCanvas.height = 1280;
+  overlayCanvas.width = 720; overlayCanvas.height = 1280;
+  
+  // 绘制参考图
+  refCtx.drawImage(scaledImg, 0, 0, 720, 1280);
+  
+  renderOverlay();
+  renderElemList();
+  renderThumbs();
+}
+
+function renderOverlay() {
+  overlayCtx.clearRect(0, 0, 720, 1280);
+  
+  REGIONS.forEach((r, i) => {
+    if(r.srcOnly) return; // 跳过右侧栏元素(不在720范围内)
+    const sel = selectedId === i;
+    
+    // 半透明填充
+    overlayCtx.fillStyle = sel ? 'rgba(255,152,0,0.25)' : 'rgba(0,229,255,0.10)';
+    overlayCtx.fillRect(r.x1, r.y1, r.x2-r.x1, r.y2-r.y1);
+    
+    // 边框
+    overlayCtx.strokeStyle = sel ? '#ff9800' : '#00e5ff';
+    overlayCtx.lineWidth = sel ? 2.5 : 1.2;
+    overlayCtx.strokeRect(r.x1, r.y1, r.x2-r.x1, r.y2-r.y1);
+    
+    // 角标
+    const cs = Math.min(r.x2-r.x1, r.y2-r.y1) * 0.12;
+    overlayCtx.lineWidth = sel ? 2 : 1.2;
+    [[r.x1,r.y1],[r.x2,r.y1],[r.x1,r.y2],[r.x2,r.y2]].forEach(([cx,cy]) => {
+      const dx = cx===r.x1?1:-1, dy = cy===r.y1?1:-1;
+      overlayCtx.beginPath();
+      overlayCtx.moveTo(cx+dx*cs, cy); overlayCtx.lineTo(cx, cy); overlayCtx.lineTo(cx, cy+dy*cs);
+      overlayCtx.stroke();
+    });
+  });
+}
+
+function renderElemList() {
+  const list = document.getElementById('elemList');
+  list.innerHTML = REGIONS.map((r, i) => `
+    <div class="elem-item ${selectedId===i?'selected':''}" onclick="selectElem(${i})">
+      <canvas class="elem-thumb" id="thumb_${i}" width="32" height="32"></canvas>
+      <div class="elem-info">
+        <div class="elem-name">${r.name}</div>
+        <div class="elem-path">${r.path}</div>
+      </div>
+      <span class="badge badge-${{btn:'btn',icon:'icon',bar:'bar',scene:'bg'}[r.cat]||'btn'}">${
+        {btn:'按钮',icon:'图标',bar:'进度条',bg:'场景'}[r.cat]}</span>
+    </div>
+  `).join('');
+  
+  document.getElementById('elemCount') = REGIONS.length;
+  
+  // 绘制每个元素的缩略图
+  REGIONS.forEach((r, i) => drawThumb(i));
+}
+
+function drawThumb(idx) {
+  const r = REGIONS[idx];
+  const tc = document.getElementById(`thumb_${idx}`);
+  if(!tc || !refImg) return;
+  const tcx = tc.getContext('2d');
+  tcx.fillStyle = '#111'; tcx.fillRect(0,0,32,32);
+  
+  try {
+    if(r.srcOnly) {
+      tcx.drawImage(refImg, r.sx, r.sy, r.sx>r.ex?r.sx-r.ex:r.ex-r.sx,
+        r.sy>r.ey?r.sy-r.ey:r.ey-r.sy, 0,0,28,28);
+    } else {
+      tcx.drawImage(scaledImg, r.x1, r.y1, r.x2-r.x1, r.y2-r.y1, -2,-2,34,34);
+    }
+  } catch(e) {}
+}
+
+function renderThumbs() {
+  // 复用 elem-list 中的 thumb
+  REGIONS.forEach((r,i) => drawThumb(i));
+}
+
+// ============================================================
+//  选择元素
+// ============================================================
+function selectElem(i) {
+  selectedId = i;
+  const r = REGIONS[i];
+  
+  // 更新列表高亮
+  document.querySelectorAll('.elem-item').forEach((el, idx) =>
+    el.classList.toggle('selected', idx === i)
+  );
+  
+  // 显示预览
+  const card = document.getElementById('previewCard');
+  card.style.display = 'block';
+  document.getElementById('previewName').textContent = r.name;
+  
+  const pc = document.getElementById('previewCanvas');
+  const pctx = pc.getContext('2d');
+  pctx.fillStyle = '#111';
+  pctx.fillRect(0,0,240,240);
+  
+  try {
+    let srcW, srcH, srcImg;
+    if(r.srcOnly) {
+      srcImg = refImg; srcW = Math.abs(r.ex-r.sx); srcH = Math.abs(r.ey-r.sy);
+      pctx.drawImage(refImg, Math.min(r.sx,r.ex), Math.min(r.sy,r ey), srcW, srcH,
+        0, 0, 200, 200);
+    } else {
+      srcImg = scaledImg; srcW = r.x2-r.x1; srcH = r.y2-r.y1;
+      const sc = Math.min(220/srcW, 220/srcH, 1);
+      pctx.drawImage(scaledImg, r.x1, r.y1, srcW, srcH,
+        (220-srcW*sc)/2, (220-srcH*sc)/2, srcW*sc, srcH*sc);
+    }
+  } catch(e) {}
+  
+  document.getElementById('previewInfo').textContent =
+    `${r.path} | 切割: ${srcW||'?'}×${srcH||'?'} → 输出: ${r.size[0]}×${r.size[1]}${r.srcOnly?' (从原图3072宽切取)':''}`;
+  
+  renderOverlay();
+}
+
+// ============================================================
+//  导出功能
+// ============================================================
+async function exportAll() {
+  if(!refImg) { alert('请先加载参考图！'); return; }
+  showProgress(true);
+  
+  let ok=0, fail=0;
+  for(let i=0; i<REGIONS.length; i++) {
+    const r = REGIONS[i];
+    updateProgress(i+1, REGIONS.length);
+    try {
+      await sliceAndDownload(r, i);
+      ok++;
+      log(`${i+1}/${REGIONS.length} ✅ ${r.name}`, 'ok');
+    } catch(e) {
+      fail++;
+      log(`${i+1}/${REGIONS.length} ❌ ${r.name}: ${e.message}`, 'warn');
+    }
+    await new Promise(r=>setTimeout(r, 50));
+  }
+  
+  showProgress(false);
+  setStatus(`导出完成！${ok} 成功 / ${fail} 失败`, ok?'ok':'warn');
+  alert(`✅ 完成！\n成功: ${ok}\n失败: ${fail}\n\n文件已逐个下载到你的下载目录。`);
+}
+
+async function sliceAndDownload(r, idx) {
+  const [ow, oh] = r.size;
+  const c = document.createElement('canvas');
+  c.width = ow; c.height = oh;
+  const cx = c.getContext('2d');
+  
+  if(r.srcOnly) {
+    cx.drawImage(refImg, Math.min(r.sx,r.ex), Math.min(r.sy,r ey),
+      Math.abs(r.ex-r.sx), Math.abs(r.ey-r.sy), 0,0, ow,oh);
+  } else {
+    cx.drawImage(scaledImg, r.x1, r.y1, r.x2-r.x1, r.y2-r.y1, 0,0, ow,oh);
+  }
+  
+  const blob = await new Promise(resolve => c.toBlob(resolve,'image/png'));
+  downloadBlob(blob, r.path.replace(/.*\//, ''));
+}
+
+async function injectToGame() {
+  if(!refImg) { alert('请先加载参考图！'); return; }
+  showProgress(true);
+  
+  const keyMap = {
+    'assets/ui/buttons/btn_settings.png':'btn_settings',
+    'assets/ui/buttons/btn_vip.png':'btn_vip',
+    'assets/ui/buttons/btn_lucky.png':'btn_lucky',
+    'assets/ui/buttons/btn_change_car.png':'btn_change_car',
+    'assets/ui/buttons/btn_auto_craft.png':'btn_auto_craft',
+    'assets/ui/buttons/btn_stage.png':'btn_stage',
+    'assets/ui/buttons/btn_race.png':'btn_race',
+    'assets/ui/buttons/btn_drone.png':'btn_drone',
+    'assets/ui/buttons/btn_buy_car.png':'btn_buy_car',
+    'assets/ui/buttons/btn_shop.png':'btn_shop',
+    'assets/ui/icons/icon_coin.png':'icon_coin',
+    'assets/ui/icons/icon_gem.png':'icon_gem',
+    'assets/ui/icons/icon_fire.png':'icon_fire',
+    'assets/ui/bars/bar_progress.png':'bar_progress',
+    'assets/scenes/main_bg/main_bg.png':'main_bg',
+  };
+  
+  let count=0;
+  for(let i=0; i<REGIONS.length; i++){
+    updateProgress(i+1, REGIONS.length);
+    const r = REGIONS[i];
+    try{
+      const c=document.createElement('canvas');
+      const [ow,oh]=r.size; c.width=ow; c.height=oh;
+      const cx=c.getContext('2d');
+      if(r.srcOnly){
+        cx.drawImage(refImg,Math.min(r.sx,r.ex),Math.min(r.sy,r ey),
+          Math.abs(r.ex-r.sx),Math.abs(r.ey-r.sy),0,0,ow,oh);
+      }else{
+        cx.drawImage(scaledImg,r.x1,r.y1,r.x2-r.x1,r.y2-r.y1,0,0,ow,oh);
+      }
+      const key=keyMap[r.path];
+      if(key){
+        localStorage.setItem('merge_racer_asset_'+key, c.toDataURL('image/png'));
+        count++;
+        log(`${i+1}/${REGIONS.length} ✅ 注入 ${r.name}`,'ok');
+      }
+    }catch(e){ log(`${i+1}/${REGIONS.length} ❌ ${e.message}`,'warn'); }
+    await new Promise(r=>setTimeout(r,30));
+  }
+  
+  showProgress(false);
+  setStatus(`注入完成！${count}个资源`,'ok');
+  alert(`✅ 已注入 ${count} 个UI资源到 localStorage！\n\n打开游戏 index.html 即可看到效果。`);
+}
+
+// ============================================================
+//  工具函数
+// ============================================================
+function downloadBlob(blob, filename) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename; a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+function clearStorage() {
+  if(!confirm('清除所有localStorage资源？'))return;
+  Object.keys(localStorage).filter(k=>k.startsWith('merge_racer_asset_'))
+    .forEach(k=>localStorage.removeItem(k));
+  log('🗑️ 已清除localStorage','warn');
+  setStatus('缓存已清除','warn');
+  renderElemList();
+}
+
+function showProgress(show) {
+  document.getElementById('progressBar').classList.toggle('show', show);
+}
+function updateProgress(cur, total) {
+  const pct = Math.round(cur/total*100);
+  document.getElementById('progressFill').style.width = pct+'%';
+  document.getElementById('progressFill').textContent = pct+'%';
+}
+
+function setStatus(msg, cls='') {
+  const el = document.getElementById('statusText');
+  el.textContent = msg; el.className = cls;
+}
+
+function log(msg, type='info') {
+  const a = document.getElementById('logArea');
+  const d = document.createElement('div');
+  d.className = type==='ok'?'color:#69f0ae':type==='warn'?'color:#ffab40':'color:#aaa';
+  d.textContent = `[${new Date().toLocaleTimeString('zh-CN',{hour12:false})}] ${msg}`;
+  a.prepend(d);
+  while(a.children.length>30) a.lastChild.remove();
+}
+
+// 启动
+log('系统就绪。请点击 "加载参考图" 或拖拽图片到左侧区域。','info');
+setStatus('⏳ 等待加载参考图...');
+</script>
+</body>
+</html>

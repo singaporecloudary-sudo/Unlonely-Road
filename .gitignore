@@ -1,0 +1,51 @@
+# 系统文件
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# 编辑器/IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# 备份文件
+*.bak
+*.bak.png
+*.bak2.png
+*.bak3.png
+*.tmp
+
+# Python 缓存
+__pycache__/
+*.pyc
+.python-version
+
+# Node modules（如果未来引入）
+node_modules/
+package-lock.json
+
+# 工作记忆 / 个人开发笔记
+.workbuddy/
+memory/
+
+# 工具脚本（个人开发用，不需要发布）
+tools/__pycache__/
+
+# Playwright 调试日志
+.playwright-cli/
+*.console.log
+
+# 老资源备份
+old/
+*_old.png
+*_v1.png
+
+# 临时素材生成
+temp/
+*.tmp.png
+
+# 操作系统
+$RECYCLE.BIN/
+ehthumbs.db

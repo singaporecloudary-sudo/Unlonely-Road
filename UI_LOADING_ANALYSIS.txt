@@ -1,0 +1,140 @@
+﻿# UI按钮/图标加载与渲染完整分析
+
+## 项目: 合成飞车射击 (Merge Racer Shooter)
+
+## 核心发现
+
+### 加载优先级 (最关键)
+
+**优先级: localStorage (base64) > 本地文件 (Image) > Canvas占位符**
+
+代码位置: asset-config.js 269-311行 (_getCustomOrLoaded方法)
+
+## 按钮渲染详情
+
+### 1. settingsBtn (设置按钮)
+- 坐标: {x: 22, y: 108, w: 55, h: 55}
+- 方法: _renderSideButtons() 第372-388行
+- 颜色: rgba(69,90,104,0.85) 背景, rgba(255,255,255,0.3) 边框
+- 图标: 圆形占位符, 颜色#78909C, 标签"⚙"
+
+### 2. vipBtn (VIP按钮)
+- 坐标: {x: 22, y: 172, w: 55, h: 55}
+- 方法: _renderSideButtons() 第390-402行
+- 颜色: rgba(183,28,28,0.82) 背景, rgba(255,215,0,0.4) 边框
+- 图标: 圆形占位符, 颜色#FFD54F, 标签"👑"
+
+### 3. autoCraftBtn (自动合成按钮)
+- 坐标: {x: 48, y: 508, w: 175, h: 52}
+- 方法: _renderButtons() 第313-326行
+- 颜色: 开启时rgba(0,200,100,0.85), 关闭时rgba(55,71,79,0.9)
+- 包含圆形图标占位符
+
+### 4. stageBtn (关卡按钮)
+- 坐标: {x: 268, y: 508, w: 185, h: 52}
+- 方法: _renderButtons() 第328-343行
+- 颜色: rgba(230,120,20,0.88) 背景, #FFD54F 边框
+- 文字: "STAGE" 24px粗体Arial
+- 这是最主要的按钮
+
+### 5. raceBtn (竞速按钮)
+- 坐标: {x: 498, y: 508, w: 175, h: 52}
+- 方法: _renderButtons() 第345-357行
+- 颜色: rgba(156,39,176,0.82) 背景, #CE93D8 边框
+- 包含皇冠图标占位符
+
+### 6. droneBtn (无人机按钮)
+- 坐标: {x: 35, y: 1120, w: 165, h: 56}
+- 方法: _renderBottom() 第419-432行
+- 颜色: rgba(0,105,92,0.85) 背景, #4DB6AC 边框
+- 图标: 盾牌符号"🛡"
+
+### 7. buyBtn (购买按钮)
+- 坐标: {x: 228, y: 1120, w: 264, h: 56}
+- 方法: _renderBottom() 第434-450行
+- 颜色: rgba(33,150,243,0.85) 背景, #90CAF9 边框
+- 显示购买价格数字
+
+### 8. shopBtn (商店按钮)
+- 坐标: {x: 520, y: 1120, w: 165, h: 56}
+- 方法: _renderBottom() 第452-465行
+- 颜色: rgba(198,40,40,0.85) 背景, #EF9A9A 边框
+- 图标: 店铺符号"🏪"
+
+## 图标加载 (asset-config.js)
+
+### icon_coin
+- 路径: assets/ui/icons/icon_coin.png
+- 尺寸: 40x40
+- 占位符: 圆形, 颜色#FFC107
+- localStorage key: merge_racer_asset_icon_coin
+- 配置行: 115行, 使用行: 292行
+
+### icon_gem
+- 路径: assets/ui/icons/icon_gem.png
+- 尺寸: 40x40
+- 占位符: 圆形, 颜色#FFC107
+- localStorage key: merge_racer_asset_icon_gem
+- 配置行: 116行, 使用行: 293行
+
+### icon_fire
+- 路径: assets/ui/icons/icon_fire.png
+- 尺寸: 40x40
+- 占位符: 圆形, 颜色#FFC107
+- 配置行: 119行
+
+## 进度条加载
+
+### progressBar
+- 配置: assets/ui/bars/bar_progress.png
+- 尺寸: 400x20
+- 渲染位置: {x: 130, y: 408, w: 460, h: 32}
+- 渲染方法: _renderProgressBar() 第234-256行
+- Canvas绘制: 背景rgba(0,0,0,0.4), 填充#FFB300(金色)
+
+## 关键代码流程
+
+### 初始化流程
+1. 加载asset-config.js
+2. window.AssetConfig 全局对象创建
+3. 调用 AssetConfig.preloadAll()
+4. 遍历所有配置的图片路径
+5. 创建Image()对象
+6. 存储到_loadedImages缓存
+
+### 渲染流程 (以renderVehicle为例)
+1. 构建文件路径
+2. 调用_getCustomOrLoaded()
+3. 检查localStorage首先
+4. 其次检查缓存
+5. 如未加载则回退到Canvas占位符
+
+### _getCustomOrLoaded优先级逻辑
+Step 1: 检查_loadedImages缓存
+Step 2: 检查localStorage中的base64
+Step 3: 返回缓存或null(等待网络加载)
+
+## 占位符类型支持 (asset-config.js 502-623行)
+
+- colored_rect: 纯色矩形(车辆), 支持多色渐变和标签
+- rounded_rect: 圆角矩形(按钮), #37474F颜色
+- circle: 圆形(图标), 颜色可配置
+- bar: 进度条, 背景+前景色
+- gradient: 渐变背景, 支持多色停止点
+- track: 赛道背景, 草地+路面+车道线
+- bullet: 炮弹效果, 椭圆形
+- particle: 粒子效果, 多个圆形粒子
+
+## localStorage存储规则
+
+### 键值格式
+- Key: merge_racer_asset_{assetName}
+- Value: base64编码的data URL
+- 格式: data:image/png;base64,iVBORw0KGg...
+
+### 支持的资源
+- 场景背景: main_bg, track_bg
+- 按钮: btn_auto_craft, btn_stage, btn_race, btn_buy_car, btn_shop, btn_settings, btn_lucky, btn_vip
+- 图标: icon_coin, icon_gem, icon_hp
+- 进度条: bar_progress, bar_hp
+

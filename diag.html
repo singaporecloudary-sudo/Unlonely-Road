@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>诊断工具</title>
+</head>
+<body style="background:#000;color:#fff;font-family:Arial;padding:20px;">
+<h2>iframe 加载游戏 + 诊断</h2>
+<button onclick="runDiag()" style="padding:8px 16px;font-size:14px;">运行诊断</button>
+<pre id="out" style="background:#222;padding:12px;font-size:12px;"></pre>
+<iframe id="game" src="index.html?diag=1" width="720" height="1280" style="border:2px solid #00E5FF;"></iframe>
+
+<script>
+async function runDiag() {
+  const out = document.getElementById('out');
+  const log = (s) => { out.textContent += s + '\n'; };
+  out.textContent = '';
+  
+  await new Promise(r => setTimeout(r, 2000));
+  const iframe = document.getElementById('game');
+  const win = iframe.contentWindow;
+  const doc = iframe.contentDocument;
+  
+  log('=== 检测Canvas渲染状态 ===');
+  
+  if (!win.gameEngine) {
+    log('ERROR: gameEngine 未初始化');
+    return;
+  }
+  log('gameEngine: OK');
+  log('当前scene: ' + win.gameEngine.currentScene);
+  log('running: ' + win.gameEngine.running);
+  
+  const scene = win.gameEngine.scenes[win.gameEngine.currentScene];
+  log('scene type: ' + (scene && scene.constructor.name));
+  
+  // 重写 render 计数
+  let renderCalls = 0;
+  const origRender = scene.render.bind(scene);
+  scene.render = function(ctx) {
+    renderCalls++;
+    return origRender(ctx);
+  };
+  
+  log('监测3秒内的render调用次数...');
+  await new Promise(r => setTimeout(r, 3000));
+  log('3秒内scene.render被调用: ' + renderCalls + ' 次 (应该约180次=60fps×3s)');
+  
+  if (renderCalls > 250) {
+    log('⚠️ 渲染次数过多！可能有重复rAF循环！');
+  } else if (renderCalls < 100) {
+    log('⚠️ 渲染次数过少！可能掉帧');
+  } else {
+    log('✓ 渲染次数正常，没有重复循环');
+  }
+  
+  // 检查DOM中按钮数量
+  const btns = doc.querySelectorAll('button');
+  log('HTML按钮数量: ' + btns.length);
+  btns.forEach((b, i) => log('  btn[' + i + ']: id=' + b.id + ' text=' + b.textContent.substring(0, 20)));
+  
+  // 检查canvas像素
+  const canvas = doc.getElementById('gameCanvas');
+  if (canvas) {
+    log('Canvas: ' + canvas.width + 'x' + canvas.height);
+    log('Canvas style: ' + canvas.style.width + 'x' + canvas.style.height);
+  }
+}
+</script>
+</body>
+</html>

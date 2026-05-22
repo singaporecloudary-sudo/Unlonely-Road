@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>调试测试</title>
+<style>
+  html, body { margin:0; padding:0; background:#000; display:flex; justify-content:center; align-items:center; height:100vh; }
+  canvas { background:#222; }
+  #log { position:fixed; top:10px; left:10px; color:#0F0; font:14px monospace; z-index:999; white-space:pre-wrap; max-width:600px; }
+</style>
+</head>
+<body>
+<div id="log"></div>
+<canvas id="gameCanvas" width="720" height="1280" style="width:360px;height:640px;"></canvas>
+
+<script src="config/game-config.js"></script>
+<script src="config/asset-config.js"></script>
+<script src="src/core/engine.js"></script>
+<script src="src/core/state.js"></script>
+<script src="src/modules/crafting/crafting-scene.js"></script>
+<script src="src/modules/battle/battle-scene.js"></script>
+<script src="src/editor/component-editor.js"></script>
+
+<script>
+const logEl = document.getElementById('log');
+function log(msg) { logEl.textContent += msg + '\n'; console.log(msg); }
+
+log('1. 开始加载...');
+
+try {
+  log('2. GameConfig类型: ' + typeof GameConfig);
+  log('3. AssetConfig类型: ' + typeof AssetConfig);
+  log('4. GameEngine类型: ' + typeof GameEngine);
+  log('5. gameState类型: ' + typeof gameState);
+  log('6. CraftingScene类型: ' + typeof CraftingScene);
+  log('7. BattleScene类型: ' + typeof BattleScene);
+  log('8. ComponentEditor类型: ' + typeof ComponentEditor);
+
+  const canvas = document.getElementById('gameCanvas');
+  log('9. Canvas: ' + (canvas ? '找到' : '未找到') + ', size=' + canvas.width + 'x' + canvas.height);
+
+  const ctx = canvas.getContext('2d');
+  log('10. Context: ' + !!ctx);
+
+  // 直接画个东西测试canvas是否工作
+  ctx.fillStyle = '#FF0000';
+  ctx.fillRect(100, 100, 200, 200);
+  ctx.fillStyle = '#FFFFFF';
+  ctx.font = '30px Arial';
+  ctx.fillText('Canvas测试', 110, 220);
+  log('11. 直接绘制测试完成 - 应该看到红色方块');
+
+  // 测试AssetConfig占位符
+  try {
+    AssetConfig.renderPlaceholder.call(AssetConfig, ctx, 'colored_rect', 50, 400, 200, 150,
+      { colors:['#4CAF50'], label:'测试', labelColor:'#FFF'}, { level:5 });
+    log('12. 占位符渲染成功');
+  } catch(e) {
+    log('12. 占位符失败: ' + e.message);
+  }
+
+  // 测试CraftingScene
+  try {
+    window.gameState = gameState;
+    const scene = new CraftingScene();
+    scene.ctx = ctx;
+    scene.engine = {};
+    scene.eventBus = { on(){}, off(){} };
+    
+    // 模拟render
+    scene.render(ctx);
+    log('13. CraftingScene.render 成功');
+  } catch(e) {
+    log('13. CraftingScene失败: ' + e.message);
+    log('   堆栈: ' + (e.stack||'').split('\n').slice(0,3).join('\n'));
+  }
+
+} catch(e) {
+  log('致命错误: ' + e.message);
+  log(e.stack);
+}
+</script>
+</body>
+</html>

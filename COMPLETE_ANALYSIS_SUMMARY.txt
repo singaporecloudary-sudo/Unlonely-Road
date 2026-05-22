@@ -1,0 +1,168 @@
+﻿========================================
+合成飞车射击 UI按钮/图标加载 完整分析
+========================================
+
+问题 1: UI按钮/图标/进度条如何加载和渲染?
+答: 优先级为 localStorage(base64) > 本地文件(Image) > Canvas占位符
+具体逻辑见 asset-config.js 第269-311行的 _getCustomOrLoaded()方法
+
+问题 2: 找到所有按钮的渲染代码
+答: 所有按钮在 src/modules/crafting/crafting-scene.js 中渲染:
+
+按钮坐标和方法:
+- settingsBtn (设置): 行372-388 _renderSideButtons() | {x:22, y:108, w:55, h:55}
+- vipBtn (VIP): 行390-402 _renderSideButtons() | {x:22, y:172, w:55, h:55}
+- autoCraftBtn (自动合成): 行313-326 _renderButtons() | {x:48, y:508, w:175, h:52}
+- stageBtn (关卡): 行328-343 _renderButtons() | {x:268, y:508, w:185, h:52}
+- raceBtn (竞速): 行345-357 _renderButtons() | {x:498, y:508, w:175, h:52}
+- droneBtn (无人机): 行419-432 _renderBottom() | {x:35, y:1120, w:165, h:56}
+- buyBtn (购买): 行434-450 _renderBottom() | {x:228, y:1120, w:264, h:56}
+- shopBtn (商店): 行452-465 _renderBottom() | {x:520, y:1120, w:165, h:56}
+
+问题 3: 找到加载 icon_coin, icon_gem, icon_fire 等图标的代码
+答: 图标配置在 config/asset-config.js:
+
+icon_coin: 行115, assets/ui/icons/icon_coin.png, 40x40, 占位符:圆形#FFC107
+icon_gem: 行116, assets/ui/icons/icon_gem.png, 40x40, 占位符:圆形#FFC107
+icon_fire: 行119, assets/ui/icons/icon_fire.png, 40x40, 占位符:圆形#FFC107
+icon_hp: 行117, assets/ui/icons/icon_hp.png, 40x40, 占位符:圆形
+
+进度条: 行135, assets/ui/bars/bar_progress.png, 400x20
+
+加载代码位置: _getCustomOrLoaded() 行269-311, renderVehicle() 行425-437
+
+问题 4: 代码优先读文件图片还是优先读 localStorage?
+答: 优先级顺序如下:
+
+1级 (最优先): localStorage中的base64数据
+   Key格式: 'merge_racer_asset_' + assetName
+   检查代码: asset-config.js 行300-307
+   
+2级: _loadedImages缓存(预加载的本地文件)
+   加载代码: preloadAll() 行314-397
+   检查代码: asset-config.js 行269-273
+   
+3级 (最后回退): Canvas绘制的占位符
+   渲染代码: renderPlaceholder() 行502-623
+
+完整优先级代码流程:
+1. _getCustomOrLoaded(path) 被调用
+2. 检查 this._loadedImages[path] 是否已缓存
+3. 如果缓存未加载, 检查 localStorage.getItem('merge_racer_asset_' + key)
+4. 如果localStorage有base64, 创建Image对象并返回
+5. 否则返回缓存或null
+6. renderVehicle/renderPlaceholder 检查图片是否完全加载
+7. 如果图片加载完成, 绘制Image
+8. 否则回退到占位符并用Canvas绘制
+
+========================================
+源代码详细查询表
+========================================
+
+1. 按钮坐标定义
+   文件: F:\游戏制作\合成飞车射击\src\modules\crafting\crafting-scene.js
+   行号: 24-57 (this.layout对象)
+
+2. 按钮渲染方法
+   settingsBtn/vipBtn: 行372-403, 方法_renderSideButtons()
+   autoCraftBtn/stageBtn/raceBtn: 行310-370, 方法_renderButtons()
+   droneBtn/buyBtn/shopBtn: 行416-466, 方法_renderBottom()
+   progressBar: 行234-256, 方法_renderProgressBar()
+
+3. 图标配置
+   文件: F:\游戏制作\合成飞车射击\config\asset-config.js
+   按钮配置: 行86-108, ui.buttons
+   图标配置: 行112-127, ui.icons
+   进度条配置: 行131-144, ui.bars
+
+4. 加载优先级逻辑
+   文件: F:\游戏制作\合成飞车射击\config\asset-config.js
+   _getCustomOrLoaded(): 行269-311 (localStorage优先级检查)
+   _loadedImages: 行261 (缓存存储)
+   preloadAll(): 行314-397 (预加载流程)
+
+5. 图片绘制
+   renderVehicle(): 行425-437 (图片+占位符)
+   renderPlaceholder(): 行502-623 (占位符引擎)
+   renderSceneBg(): 行454-484 (背景渲染)
+
+========================================
+localStorage 存储规则
+========================================
+
+Key格式: merge_racer_asset_{assetName}
+Value: base64 data URL
+例子: 'data:image/png;base64,iVBORw0KGg...'
+
+支持的资源 Key 列表:
+- 场景背景: main_bg, track_bg
+- 按钮: btn_auto_craft, btn_stage, btn_race, btn_buy_car, btn_shop, btn_settings, btn_lucky, btn_vip
+- 图标: icon_coin, icon_gem, icon_hp
+- 进度条: bar_progress, bar_hp
+
+写入示例:
+localStorage.setItem('merge_racer_asset_icon_coin', 'data:image/png;base64,...')
+
+读取代码:
+var data = localStorage.getItem('merge_racer_asset_' + assetName)
+if (data) {
+  var img = new Image()
+  img.src = data
+  return img
+}
+
+========================================
+占位符类型一览
+========================================
+
+1. colored_rect (纯色矩形)
+   - 用途: 车辆显示
+   - 特性: 支持按等级变色, 支持标签显示(如"LV5")
+   - 颜色数组: 52种颜色对应52个等级
+
+2. rounded_rect (圆角矩形)
+   - 用途: 按钮背景
+   - 颜色: #37474F (灰色)
+   - 圆角: 8px
+
+3. circle (圆形)
+   - 用途: 图标占位
+   - 颜色: 可配置 (默认#FFC107金黄)
+
+4. bar (进度条)
+   - 用途: 血条/经验条
+   - 参数: bgColor(背景), fgColor(填充), borderColor(边框), ratio(进度比例)
+
+5. gradient (渐变)
+   - 用途: 背景渲染
+   - 类型: 垂直线性渐变
+
+6. track (赛道)
+   - 用途: 赛道背景
+   - 组件: 草地 + 路面 + 车道线
+
+7. bullet (炮弹)
+   - 用途: 炮弹效果
+   - 形状: 椭圆
+
+8. particle (粒子)
+   - 用途: 爆炸/合成效果
+   - 形状: 多个彩色圆形
+
+========================================
+完整代码摘录位置
+========================================
+
+已生成的分析文件:
+- F:\游戏制作\合成飞车射击\UI_LOADING_ANALYSIS.txt
+- F:\游戏制作\合成飞车射击\ANALYSIS_SNIPPETS.txt
+
+完整源代码文件:
+- config/asset-config.js (634行, 完整)
+- src/modules/crafting/crafting-scene.js (680行, 完整)
+- src/core/engine.js (271行)
+- src/core/state.js (200+行)
+- config/game-config.js (207行)
+
+========================================
+EOF
