@@ -4,7 +4,7 @@
 
 ## 🎮 在线试玩
 
-[点击这里在线游玩](https://你的用户名.github.io/lonely-road/)
+[点击这里在线游玩](https://singaporecloudary-sudo.github.io/Unlonely-Road/)
 
 > 部署后请把上面的链接替换成你自己的 GitHub Pages 地址
 
