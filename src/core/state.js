@@ -18,7 +18,7 @@ class GameState {
 
     return {
       // 经济
-      coins: 10000,
+      coins: 100,
       gems: 100,
 
       // 合成系统

@@ -1559,18 +1559,96 @@ CraftingScene.prototype._renderBottom = function(ctx) {
 
 // ========== 通知浮窗 ==========
 CraftingScene.prototype._renderNotification = function(ctx) {
+  if (!this.notification) return;
   ctx.save();
-  var alpha = Math.min(1, this.notificationTimer * 2);
+  var timeLeft = this.notificationTimer || 0;
+  var alpha = Math.min(1, timeLeft * 2);
   ctx.globalAlpha = alpha;
-  ctx.fillStyle = 'rgba(0,0,0,0.75)';
-  this._fillRoundRect(ctx, 110, 600, 500, 48, 12);
-  ctx.strokeStyle = 'rgba(0,229,255,0.4)';
-  ctx.lineWidth = 1;
-  this._strokeRoundRect(ctx, 110, 600, 500, 48, 12);
-  ctx.fillStyle = '#FFFFFF';
-  ctx.font = 'bold 17px Arial, sans-serif';
-  ctx.textAlign = 'center';
-  ctx.fillText(this.notification, 360, 631);
+
+  var text = this.notification;
+  // 智能区分：警告提示 vs 普通通知
+  var isWarning = text.indexOf('不足') !== -1 || text.indexOf('空位') !== -1 || text.indexOf('满') !== -1 || text.indexOf('完') !== -1 || text.indexOf('失败') !== -1;
+
+  var bgGradStart, bgGradEnd, borderColor, textColor, glowColor;
+  if (isWarning) {
+    bgGradStart = 'rgba(70, 8, 16, 0.95)';
+    bgGradEnd = 'rgba(40, 4, 8, 0.98)';
+    borderColor = '#FF3D00'; // 亮红
+    textColor = '#FFD54F';   // 刺眼金色文本，防视觉疲劳
+    glowColor = 'rgba(255, 61, 0, 0.7)';
+  } else {
+    bgGradStart = 'rgba(0, 32, 54, 0.95)';
+    bgGradEnd = 'rgba(0, 16, 32, 0.98)';
+    borderColor = '#00E5FF'; // 亮青
+    textColor = '#E0F7FA';   // 明亮白青色
+    glowColor = 'rgba(0, 229, 255, 0.5)';
+  }
+
+  // 弹性落下动效：3秒定时器，前0.4秒做弹落
+  var startY = 560;
+  var targetY = 590;
+  var boxY = targetY;
+  var elapsed = 3.0 - timeLeft; // 已经过去的时间
+  if (elapsed < 0.4) {
+    var ratio = elapsed / 0.4;
+    // 弹性公式
+    var bounce = Math.sin(ratio * Math.PI * 1.35) * 0.3 + ratio * 0.7;
+    boxY = startY + (targetY - startY) * bounce;
+  }
+
+  var boxW = 520;
+  var boxH = 64;
+  var boxX = 360 - boxW / 2;
+
+  // 绘制圆角科技切角框背景
+  var ch = 12; // 切角
+  ctx.beginPath();
+  ctx.moveTo(boxX + ch, boxY);
+  ctx.lineTo(boxX + boxW - ch, boxY);
+  ctx.lineTo(boxX + boxW, boxY + ch);
+  ctx.lineTo(boxX + boxW, boxY + boxH - ch);
+  ctx.lineTo(boxX + boxW - ch, boxY + boxH);
+  ctx.lineTo(boxX + ch, boxY + boxH);
+  ctx.lineTo(boxX, boxY + boxH - ch);
+  ctx.lineTo(boxX, boxY + ch);
+  ctx.closePath();
+
+  var bg = ctx.createLinearGradient(boxX, boxY, boxX, boxY + boxH);
+  bg.addColorStop(0, bgGradStart);
+  bg.addColorStop(1, bgGradEnd);
+  ctx.fillStyle = bg;
+  ctx.fill();
+
+  // 霓虹发光边框
+  ctx.shadowColor = glowColor;
+  ctx.shadowBlur = 18;
+  ctx.strokeStyle = borderColor;
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  ctx.shadowBlur = 0;
+
+  // 警告符号图标
+  if (isWarning) {
+    ctx.fillStyle = '#FF3D00';
+    ctx.font = 'bold 22px Arial';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('⚠️', boxX + 40, boxY + boxH / 2);
+  } else {
+    ctx.fillStyle = '#00E5FF';
+    ctx.font = 'bold 22px Arial';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('⚡', boxX + 40, boxY + boxH / 2);
+  }
+
+  // 通知文本
+  ctx.fillStyle = textColor;
+  ctx.font = 'bold 20px "Microsoft YaHei", Arial, sans-serif';
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(text, boxX + 72, boxY + boxH / 2 + 1);
+
   ctx.restore();
 };
 
