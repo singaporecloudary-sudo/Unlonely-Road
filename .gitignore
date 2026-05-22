@@ -41,6 +41,8 @@ tools/__pycache__/
 old/
 *_old.png
 *_v1.png
+_backup_before_user_upload/
+custom_assets_backup.json
 
 # 临时素材生成
 temp/
