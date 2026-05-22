@@ -541,9 +541,23 @@ const AssetConfig = {
       (function(taskPath) {
         var img = new Image();
         img.onload = function() {
-          self._loadedImages[taskPath] = img;
-          loaded++;
-          if (onProgress) onProgress(loaded / total);
+          // 使用现代浏览器 img.decode() GPU 硬件级提前图片预解码技术，彻底消除进入关卡时的首次渲染卡顿掉帧
+          if (img.decode) {
+            img.decode().then(function() {
+              self._loadedImages[taskPath] = img;
+              loaded++;
+              if (onProgress) onProgress(loaded / total);
+            }).catch(function() {
+              // 容错：如果解码失败，fallback回到正常 onload
+              self._loadedImages[taskPath] = img;
+              loaded++;
+              if (onProgress) onProgress(loaded / total);
+            });
+          } else {
+            self._loadedImages[taskPath] = img;
+            loaded++;
+            if (onProgress) onProgress(loaded / total);
+          }
         };
         img.onerror = function() {
           // 图片不存在 → 使用占位符，不算错误

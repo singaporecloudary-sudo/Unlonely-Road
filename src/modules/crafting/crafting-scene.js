@@ -66,8 +66,8 @@ function CraftingScene() {
     cpsDisplay:    { x: 200, y: 5,  w: 320, h: 38 },   // 大号每秒收益
     gemsDisplay:   { x: 560, y: 6,  w: 150, h: 34 },   // 钻石
 
-    // ===== 左侧横排按钮 =====
-    rankBtn:       { x: 20,  y: 72,  w: 64,  h: 64 },
+    // ===== 左侧横排按钮（还原到大背景图原有的排行按钮位置，确保触觉一戳即开） =====
+    rankBtn:       { x: 15,  y: 230, w: 56,  h: 56 },
 
     // ===== 右侧竖排按钮 =====
     luckyBtn:      { x: 649, y: 100, w: 56,  h: 56 },
@@ -469,33 +469,40 @@ CraftingScene.prototype._renderTopBar = function(ctx) {
 CraftingScene.prototype._renderSideButtons = function(ctx) {
   var L = this.layout;
   
-  // 排行榜按钮（大号尊贵圆角）
+  // 1. 【高能磨皮】擦除并覆盖背景图中多余的 ⚙️设置 (Y=100) 和 📋任务 (Y=165) 按钮轮廓，使其保持极致的极简！
+  ctx.save();
+  ctx.fillStyle = 'rgba(8, 16, 28, 0.98)'; // 与大背景霓虹深邃城市底色一致
+  this._fillRoundRect(ctx, 15, 100, 56, 56, 12);
+  this._fillRoundRect(ctx, 15, 165, 56, 56, 12);
+  ctx.restore();
+
+  // 2. 在原位精细渲染唯一的【👑排行】按钮（Y=230），完全吻合玩家一戳即开的手指直觉！
   var rb = L.rankBtn;
   if (!rb) return;
 
   ctx.save();
-  // 按钮微弱外发光
-  ctx.shadowColor = 'rgba(255, 152, 0, 0.45)';
-  ctx.shadowBlur = 10;
-  ctx.fillStyle = 'rgba(15, 30, 52, 0.82)';
-  this._fillRoundRect(ctx, rb.x, rb.y, rb.w, rb.h, 14);
+  // 按钮外发光
+  ctx.shadowColor = 'rgba(255, 152, 0, 0.55)';
+  ctx.shadowBlur = 12;
+  ctx.fillStyle = 'rgba(15, 30, 52, 0.85)';
+  this._fillRoundRect(ctx, rb.x, rb.y, rb.w, rb.h, 12);
   ctx.shadowBlur = 0;
 
   // 尊贵金橙色金属描边
   ctx.strokeStyle = '#FF9800'; 
-  this._strokeRoundRect(ctx, rb.x, rb.y, rb.w, rb.h, 14, 2);
+  this._strokeRoundRect(ctx, rb.x, rb.y, rb.w, rb.h, 12, 1.5);
 
   // 渲染图标
   ctx.fillStyle = '#FFD54F'; // 亮金色
-  ctx.font = '26px Arial, sans-serif';
+  ctx.font = '24px Arial, sans-serif';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.fillText('👑', rb.x + rb.w / 2, rb.y + rb.h / 2 - 9);
+  ctx.fillText('👑', rb.x + rb.w / 2, rb.y + rb.h / 2 - 8);
 
   // 标签文字
-  ctx.font = 'bold 10px "Microsoft YaHei", Arial, sans-serif';
+  ctx.font = 'bold 9px "Microsoft YaHei", Arial, sans-serif';
   ctx.fillStyle = '#FFE082';
-  ctx.fillText('排行', rb.x + rb.w / 2, rb.y + rb.h - 10);
+  ctx.fillText('排行', rb.x + rb.w / 2, rb.y + rb.h - 8);
   
   ctx.restore();
 };
@@ -2164,7 +2171,7 @@ CraftingScene.prototype._renderRankPanel = function(ctx) {
     ctx.fillText(dispName, px + 146, rowY + rowH / 2 - 2);
 
     // E. 绘制分数
-    var scoreText = (this._rankTab === 'stage') ? '关卡 ' + item.score : item.score + ' m';
+    var scoreText = (this._rankTab === 'stage') ? '通关 ' + item.score + ' 关' : item.score + ' m';
     ctx.fillStyle = '#00E5FF';
     ctx.font = 'bold 15px Arial, sans-serif';
     ctx.textAlign = 'right';

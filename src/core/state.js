@@ -64,7 +64,7 @@ class GameState {
       // 玩家个人资料及排行榜最高记录
       playerName: '',            // 玩家昵称
       playerAvatar: 0,           // 玩家头像 ID (0~5)
-      maxStageReached: 1,        // 通关最高关卡数
+      maxStageReached: 0,        // 通关最高关卡数，初始为 0 关
       maxStageTime: Date.now(),  // 达成关卡记录时间
       maxEndlessDist: 0,         // 无尽历史最高距离 (m)
       maxEndlessTime: Date.now() // 达成无尽记录时间
