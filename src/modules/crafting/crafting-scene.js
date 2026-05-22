@@ -469,14 +469,7 @@ CraftingScene.prototype._renderTopBar = function(ctx) {
 CraftingScene.prototype._renderSideButtons = function(ctx) {
   var L = this.layout;
   
-  // 1. 【高能磨皮】擦除并覆盖背景图中多余的 ⚙️设置 (Y=100) 和 📋任务 (Y=165) 按钮轮廓，使其保持极致的极简！
-  ctx.save();
-  ctx.fillStyle = 'rgba(8, 16, 28, 0.98)'; // 与大背景霓虹深邃城市底色一致
-  this._fillRoundRect(ctx, 15, 100, 56, 56, 12);
-  this._fillRoundRect(ctx, 15, 165, 56, 56, 12);
-  ctx.restore();
-
-  // 2. 在原位精细渲染唯一的【👑排行】按钮（Y=230），完全吻合玩家一戳即开的手指直觉！
+  // 在原位精细渲染唯一的【👑排行】按钮（Y=230），完全吻合玩家一戳即开的手指直觉！
   var rb = L.rankBtn;
   if (!rb) return;
 
@@ -2628,7 +2621,7 @@ CraftingScene.prototype._renderVictoryCoinParticles = function(ctx) {
 
 CraftingScene.prototype._handleButtonClick = function(pos) {
   var L = this.layout;
-  var inRect = function(r) { return pos.x >= r.x && pos.x <= r.x + r.w && pos.y >= r.y && pos.y <= r.y + r.h; };
+  var inRect = function(r) { return r && pos.x >= r.x && pos.x <= r.x + r.w && pos.y >= r.y && pos.y <= r.y + r.h; };
 
   // 功能按钮行
   if (inRect(L.autoCraftBtn)) {
@@ -2646,12 +2639,8 @@ CraftingScene.prototype._handleButtonClick = function(pos) {
     this.engine.switchScene('battle');
   }
 
-  // 左侧按钮
-  else if (inRect(L.settingsBtn)) {
-    this.showNotification('设置(开发中)');
-  } else if (inRect(L.taskBtn)) {
-    this.showNotification('任务(开发中)');
-  } else if (inRect(L.rankBtn)) {
+  // 左侧按钮（已精简净化，仅保留排行榜）
+  else if (inRect(L.rankBtn)) {
     this._rankOpen = true;
     if (window.AudioManager && window.AudioManager.click) window.AudioManager.click();
   }
