@@ -20,7 +20,7 @@ class BattleScene {
     this.roadWidth = this.W * 0.7;
     this.roadX = (this.W - this.roadWidth) / 2;
     this.laneWidth = this.roadWidth / this.laneCount;
-    this.scrollSpeed = 3;
+    this.scrollSpeed = 5.2;
     this.scrollOffset = 0;
 
     // 玩家（初始位置在中间车道中央，300%尺寸）
@@ -1452,8 +1452,17 @@ class BattleScene {
 
   _playerTakeDamage(damage) {
     const hasShield = this.player.buffs.some(b => b.type === 'shield');
-    const reduction = hasShield ? (window.GameConfig?.battle?.buffs?.shield?.damageReduction || 0.5) : 0;
-    const actualDamage = Math.floor(damage * (1 - reduction));
+    if (hasShield) {
+      // 护盾完全吸收伤害：不扣血，不触发无敌闪烁，展示吸收字样
+      this._addFloatingText(this.player.x, this.player.y - 60, '🛡️ 吸收', '#2979FF');
+      this._addEffect(this.player.x, this.player.y, 'hit');
+      if (window.AudioManager && window.AudioManager.hit) {
+        window.AudioManager.hit();
+      }
+      return;
+    }
+
+    const actualDamage = damage;
 
     this.player.hp -= actualDamage;
     this._addFloatingText(this.player.x, this.player.y - 60, `-${actualDamage}`, '#FF5252');

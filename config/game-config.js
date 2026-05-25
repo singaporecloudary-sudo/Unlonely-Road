@@ -171,9 +171,10 @@ const GameConfig = {
       atkFactor: 1,
 
       // 移动速度 = base + stage * spdScale
-      speedBase: 2,
-      speedScale: 0.025,
-      speedMax: 6,
+      // 大幅调速：提升物理下落速度和上限，增加高速压迫感
+      speedBase: 3.5,
+      speedScale: 0.03,
+      speedMax: 8.5,
     },
 
     // 障碍物属性（数值策划重新平衡 v2）
@@ -207,10 +208,10 @@ const GameConfig = {
       // 注：LV2车 atk=10 bullets=1 DPS=33，LV5 atk=11 bullets=2 DPS=73
       scaling: {
         // --- HP公式: baseHp * hpGrow^(关卡-1) ---
-        // 第1关Boss HP=400（LV1车 27DPS ≈ 15s击杀），略调低
-        baseHp: 400,
-        hpGrow: 1.07,             // 7%递增（原8%太陡）
-        // Stage 1: 400 | Stage 10: 736 | Stage 20: 1448 | Stage 50: 11797
+        // 指数大提升：基数调至500，成长率调至 1.15 (15%指数成长)
+        // Stage 1: 500 | Stage 10: 1759 | Stage 20: 7118 | Stage 50: 468000
+        baseHp: 500,
+        hpGrow: 1.15,             // 15%指数递增，确保大后期极高能挑战性
 
         // --- 子弹伤害: bulletBaseDmg + 关卡 × bulletDmgScale ---
         // 第1关5伤害（LV1车80HP抗16次），50关20伤害（LV20车950HP抗47次）
@@ -322,12 +323,12 @@ const GameConfig = {
     // 无关卡距离限制、无Boss，看最终跑多远，玩家被击杀时结束
     // 金币 = 击杀敌车收益（每击杀获得 Math.floor(enemy.maxHp * 0.5) 金币）
     endless: {
-      // 初始滚动速度（比闯关慢一点，拉长体验）
-      baseScrollSpeed: 2.5,
-      // 滚动速度随时间缓慢增加（每60秒+0.3，有上限）
-      scrollSpeedGrowth: 0.3,
+      // 初始滚动速度大提升，拉满竞速快感
+      baseScrollSpeed: 4.2,
+      // 滚动速度随时间缓慢增加（每60秒+0.4）
+      scrollSpeedGrowth: 0.4,
       scrollSpeedGrowthInterval: 60,   // 秒
-      maxScrollSpeed: 7,
+      maxScrollSpeed: 10,
       // 敌方HP成长使用等效关卡 = floor(时间/30) + 1，每30秒等效+1关
       stageGrowthPerSeconds: 30,
       // 金币倍率：最终结算金币 × 此倍率

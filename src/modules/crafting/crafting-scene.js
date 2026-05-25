@@ -2627,13 +2627,8 @@ CraftingScene.prototype._handleButtonClick = function(pos) {
   if (inRect(L.autoCraftBtn)) {
     this.state.set('autoCraft', !this.state.get('autoCraft'));
   } else if (inRect(L.stageBtn)) {
-    if (this.state.get('remainingChallenges') > 0) {
-      this.state.useChallenge();
-      this.state.set('gameMode', 'stage');
-      this.engine.switchScene('battle');
-    } else {
-      this.showNotification('今日闯关次数已用完');
-    }
+    this.state.set('gameMode', 'stage');
+    this.engine.switchScene('battle');
   } else if (inRect(L.raceBtn)) {
     this.state.set('gameMode', 'endless');
     this.engine.switchScene('battle');
