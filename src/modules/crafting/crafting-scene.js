@@ -2203,19 +2203,19 @@ CraftingScene.prototype._renderRankPanel = function(ctx) {
   // 副标题描述
   ctx.fillStyle = '#88AABF';
   ctx.font = '12px "Microsoft YaHei", Arial, sans-serif';
-  ctx.fillText('点击下方头像一键更换，或点击右侧按钮点火起名', px + 138, editY + 80);
+  ctx.fillText('点击下方头像一键更换，或点击右侧按钮更换昵称', px + 138, editY + 80);
 
-  // 🚀 LAUNCH 启动起名按钮 (橙红色拉风启动键)
+  // 🚀 更换昵称 按钮 (亮蓝色科幻发光启动键)
   var rNameX = px + panelW - 195, rNameY = editY + 36, rNameW = 145, rNameH = 48;
   this._randomNameBtnRect = { x: rNameX, y: rNameY, w: rNameW, h: rNameH };
 
   var rGrad = ctx.createLinearGradient(rNameX, rNameY, rNameX, rNameY + rNameH);
-  rGrad.addColorStop(0, '#FF3D00'); // 亮火红
-  rGrad.addColorStop(1, '#DD2C00');
+  rGrad.addColorStop(0, '#00b0ff'); // 亮科幻蓝
+  rGrad.addColorStop(1, '#00e5ff'); // 亮青
   ctx.fillStyle = rGrad;
   
   ctx.save();
-  ctx.shadowColor = 'rgba(255, 61, 0, 0.55)';
+  ctx.shadowColor = 'rgba(0, 229, 255, 0.55)';
   ctx.shadowBlur = 10;
   this._fillChamferRect(ctx, rNameX, rNameY, rNameW, rNameH, 6);
   ctx.restore();
@@ -2226,7 +2226,7 @@ CraftingScene.prototype._renderRankPanel = function(ctx) {
   ctx.fillStyle = '#FFFFFF';
   ctx.font = 'bold 15px "Microsoft YaHei", Arial, sans-serif';
   ctx.textAlign = 'center';
-  ctx.fillText('LAUNCH 🚀', rNameX + rNameW / 2, rNameY + rNameH / 2 + 1);
+  ctx.fillText('更换昵称', rNameX + rNameW / 2, rNameY + rNameH / 2 + 1);
 
   // 头像选择列表网格一字排开
   var avGridY = editY + 124;
